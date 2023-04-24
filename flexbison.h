@@ -1,0 +1,5 @@
+
+/* just like Unix wc */
+%{
+
+%}
