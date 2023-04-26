@@ -24,7 +24,10 @@ MSP使用到的库有：
 - Windows下只支持64位编译。
 - 在Windows下的渲染使用Direct2D和DirectWrite技术，支持GPU硬件加速
 
-
+编写代码的几点考量
+- *.cpp是C++代码, *.c是纯C代码
+- 和平台无关的class的命名使用M开头，如MParser。和平台相关的用N开头，表示Native，如NRender
+- 从PostgreSQL拷贝的源码保持变量名和函数名不变
 
 ***
 
