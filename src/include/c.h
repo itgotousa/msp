@@ -1,6 +1,12 @@
 #ifndef __C_H__
 #define __C_H__
 
+#include "include/pg_config_manual.h"
+
+#ifndef NULL
+#define NULL    0
+#endif
+
 #ifndef bool
 typedef unsigned char bool;
 #endif
@@ -37,6 +43,13 @@ typedef size_t Size;
 #define MAXIMUM_ALIGNOF     8 
 #define MAXALIGN64(LEN)		TYPEALIGN64(MAXIMUM_ALIGNOF, (LEN))
 
+#define Assert(condition)	((void)true)
+#define AssertMacro(condition)	((void)true)
+#define AssertArg(condition)	((void)true)
+#define AssertState(condition)	((void)true)
+#define AssertPointerAlignment(ptr, bndr)	((void)true)
+#define Trap(condition, errorType)	((void)true)
+#define TrapMacro(condition, errorType) (true)
 
 
-#endif __C_H__
+#endif /* __C_H__ */
