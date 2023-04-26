@@ -7,6 +7,10 @@ MSP的体系架构如下：
 
 ![](svg/x0001.svg)
 
+MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
+
+![](svg/x0002.svg)
+
 MSP使用到的库有：
 - zlib
 - WTL for Win64
