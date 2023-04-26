@@ -1,12 +1,14 @@
 #ifndef __C_H__
 #define __C_H__
 
+#include <stdint.h>
 #include "include/pg_config_manual.h"
 
 #ifndef NULL
 #define NULL    0
 #endif
 
+#if 0
 #ifndef bool
 typedef unsigned char bool;
 #endif
@@ -17,6 +19,7 @@ typedef unsigned char bool;
 
 #ifndef false
 #define false	((bool) 0)
+#endif
 #endif
 
 typedef signed char int8;		/* == 8 bits */
