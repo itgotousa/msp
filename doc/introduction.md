@@ -7,6 +7,11 @@ MSP的体系架构如下：
 
 ![](svg/x0001.svg)
 
+MSP使用到的库有：
+- zlib
+- WTL for Win64
+- libpng
+
 如果你有兴趣一同开发，请联系itgotousa@gmail.com
 
 
