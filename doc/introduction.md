@@ -16,6 +16,18 @@ MSP使用到的库有：
 - WTL for Win64
 - libpng
 
+
+由于作者对Windows平台的开发最为熟悉，所以本项目优先实现在Windows平台上的开发。以下是几点设计上的考虑
+- 把平台无关的代码和操作系统相关的代码分开，方便移植。
+- 最小化调用操作系统的功能。
+- 大量借鉴PostgreSQL的源代码，因为作者是PostgreSQL DBA
+- Windows下只支持64位编译。
+- 在Windows下的渲染使用Direct2D和DirectWrite技术，支持GPU硬件加速
+
+
+
+===
+
 如果你有兴趣一同开发，请联系itgotousa@gmail.com
 
 
