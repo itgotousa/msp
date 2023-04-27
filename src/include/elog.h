@@ -34,7 +34,7 @@
 #define FATAL		22			/* fatal error - abort process */
 #define PANIC		23			/* take down the other backends with me */
 
-#define elog(elevel, ...)  do {} while(0)
-#define ereport(elevel, ...)  do {} while(0)
+#define elog(elevel, ...)  do { if((elevel) >= ERROR) pg_unreachable(); } while(0)
+#define ereport(elevel, ...)  do { if((elevel) >= ERROR) pg_unreachable(); } while(0)
 
 #endif  /* __ELOG_H__ */

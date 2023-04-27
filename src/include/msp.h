@@ -8,7 +8,9 @@ extern "C" {
 #endif
 
 #include "c.h"
+#include "elog.h"
 #include "pg_bitutils.h"
+#include "nodes.h"
 #include "memnodes.h"
 #include "hsearch.h"
 

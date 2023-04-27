@@ -48,6 +48,7 @@ typedef long long int int64;
 typedef unsigned long long int uint64;
 
 typedef size_t Size;
+typedef unsigned int Oid;
 
 #define TYPEALIGN(ALIGNVAL,LEN)  \
 	(((uintptr_t) (LEN) + ((ALIGNVAL) - 1)) & ~((uintptr_t) ((ALIGNVAL) - 1)))
@@ -78,5 +79,21 @@ typedef size_t Size;
 #define PGDLLIMPORT		/* empty */
 
 #define PG_USED_FOR_ASSERTS_ONLY	/* empty */
+
+#define FLEXIBLE_ARRAY_MEMBER     /* empty */
+
+/*
+ * Mark a point as unreachable in a portable fashion.  This should preferably
+ * be something that the compiler understands, to aid code generation.
+ * In assert-enabled builds, we prefer abort() for debugging reasons.
+ */
+#if defined(HAVE__BUILTIN_UNREACHABLE) && !defined(USE_ASSERT_CHECKING)
+#define pg_unreachable() __builtin_unreachable()
+#elif defined(_MSC_VER) && !defined(USE_ASSERT_CHECKING)
+#define pg_unreachable() __assume(0)
+#else
+#define pg_unreachable() abort()
+#endif
+
 
 #endif /* __C_H__ */
