@@ -1,10 +1,6 @@
 #ifndef __HSEARCH_H__
 #define __HSEARCH_H__
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #include "include/c.h"
 
 #if 0
@@ -111,8 +107,5 @@ typedef enum
 
 uint32 hash_bytes(const unsigned char *k, int keylen);
 
-#if defined(__cplusplus)
-}
-#endif
 
 #endif /* __HSEARCH_H__ */
