@@ -11,4 +11,4 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /W3 /MTd")
 
 # add_executable(msp main.cpp hashfn.c aset.c mcxt.c)
-add_executable(msp main.cpp mcxt.c aset.c globals.c pg_leftmost_one_pos.c list.c copyfuncs.c equalfuncs.c strlcpy.c)
+add_executable(msp main.cpp mcxt.c aset.c globals.c pg_leftmost_one_pos.c list.c copyfuncs.c equalfuncs.c strlcpy.c dynahash.c hashfn.c globals.c)

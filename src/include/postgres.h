@@ -761,5 +761,7 @@ extern Datum Float8GetDatum(float8 X);
 #define Float8GetDatumFast(X) PointerGetDatum(&(X))
 #endif
 
+extern Size add_size(Size s1, Size s2);
+extern Size mul_size(Size s1, Size s2);
 
 #endif /* __POSTGRES_H__ */

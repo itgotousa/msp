@@ -10,7 +10,8 @@ int main(int argc, char* argv[])
     char *p;
     uint32 v;
     Node *pn;
-    
+    HASHCTL		hash_ctl;
+
     pn = &node;
     pn->type = T_AllocSetContext;
     if(IsA(pn, AllocSetContext)) {
@@ -32,10 +33,10 @@ int main(int argc, char* argv[])
         pfree(p);
     }
 
-    HASHCTL		hash_ctl;
 
     hash_ctl.keysize = sizeof(Oid);
     hash_ctl.entrysize = sizeof(Oid);
+
     hash_create("Uncommitted enums",
         32,
         &hash_ctl,

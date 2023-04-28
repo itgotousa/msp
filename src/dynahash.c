@@ -1729,12 +1729,14 @@ static int	num_seq_scans = 0;
 static void
 register_seq_scan(HTAB *hashp)
 {
+#if 0	
 	if (num_seq_scans >= MAX_SEQ_SCANS)
 		elog(ERROR, "too many active hash_seq_search scans, cannot start one on \"%s\"",
 			 hashp->tabname);
 	seq_scan_tables[num_seq_scans] = hashp;
 	seq_scan_level[num_seq_scans] = GetCurrentTransactionNestLevel();
 	num_seq_scans++;
+#endif 	
 }
 
 /* Deregister an active scan */

@@ -111,8 +111,8 @@ typedef int INT;
 
 
 #if !defined(S_LOCK)
-#define S_LOCK(lock) \
-	(TAS(lock) ? s_lock((lock), __FILE__, __LINE__, PG_FUNCNAME_MACRO) : 0)
+#define S_LOCK(lock) 
+	// (TAS(lock) ? s_lock((lock), __FILE__, __LINE__, PG_FUNCNAME_MACRO) : 0)
 #endif	 /* S_LOCK */
 
 #if !defined(S_LOCK_FREE)
