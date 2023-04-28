@@ -1,5 +1,6 @@
-# msp
-MSP is a tiny viewer to view markdown + svg + png files, and this is where its name come from. 
+# What is MSP?
+
+MSP is a tiny and open-sourced viewer to view markdown + svg + png files, and this is where its name come from. It has the same effects just like what you see the *.md file from github.com.
 
 It is a native application developed in C/C++, and it has dependency with nothing else beside the OS itself.
 
