@@ -33,7 +33,6 @@ int main(int argc, char* argv[])
         pfree(p);
     }
 
-
     hash_ctl.keysize = sizeof(Oid);
     hash_ctl.entrysize = sizeof(Oid);
 
