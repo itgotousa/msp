@@ -32,5 +32,14 @@ int main(int argc, char* argv[])
         pfree(p);
     }
 
+    HASHCTL		hash_ctl;
+
+    hash_ctl.keysize = sizeof(Oid);
+    hash_ctl.entrysize = sizeof(Oid);
+    hash_create("Uncommitted enums",
+        32,
+        &hash_ctl,
+        HASH_ELEM | HASH_BLOBS);
+
     return 0;
 }

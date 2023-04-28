@@ -97,8 +97,18 @@
 #ifndef __S_LOCK_H__
 #define __S_LOCK_H__
 
-#include <winnt.h>
 #include "c.h"
+
+#ifndef VOID
+#define VOID void
+typedef char CHAR;
+typedef short SHORT;
+typedef long LONG;
+#if !defined(MIDL_PASS)
+typedef int INT;
+#endif
+#endif
+
 
 #if !defined(S_LOCK)
 #define S_LOCK(lock) \
