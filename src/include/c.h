@@ -6,6 +6,8 @@
 #include "pg_config_manual.h"
 #include "postgres_ext.h"
 
+#define __inline__	inline
+
 #ifdef _WIN64 
 	#define	__builtin_clz(x)		__lzcnt(x)
 	#define	__builtin_clzl(x)	 	__lzcnt64(x)
@@ -830,7 +832,7 @@ typedef NameData *Name;
  */
 #ifndef FRONTEND
 
-#define ExceptionalCondition(a,b,c,d)  do {} while(0)
+#define ExceptionalCondition(a,b,c,d)  ((void)true)
 /*
 extern void ExceptionalCondition(const char *conditionName,
 								 const char *errorType,

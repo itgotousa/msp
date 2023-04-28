@@ -1,11 +1,6 @@
 #ifndef __HSEARCH_H__
 #define __HSEARCH_H__
 
-#include "include/c.h"
-
-#if 0
-#include "include/memnodes.h"
-
 /*
  * Hash functions must have this signature.
  */
@@ -95,6 +90,9 @@ typedef struct HASHCTL
 #define HASH_ATTACH		0x1000	/* Do not initialize hctl */
 #define HASH_FIXED_SIZE 0x2000	/* Initial size is a hard limit */
 
+/* max_dsize value to indicate expansible directory */
+#define NO_MAX_DSIZE			(-1)
+
 /* hash_search operations */
 typedef enum
 {
@@ -103,9 +101,39 @@ typedef enum
 	HASH_REMOVE,
 	HASH_ENTER_NULL
 } HASHACTION;
-#endif 
 
-uint32 hash_bytes(const unsigned char *k, int keylen);
+/* hash_seq status (should be considered an opaque type by callers) */
+typedef struct
+{
+	HTAB	   *hashp;
+	uint32		curBucket;		/* index of current bucket */
+	HASHELEMENT *curEntry;		/* current entry in bucket */
+} HASH_SEQ_STATUS;
 
+/*
+ * prototypes for functions in dynahash.c
+ */
+extern HTAB *hash_create(const char *tabname, long nelem,
+						 const HASHCTL *info, int flags);
+extern void hash_destroy(HTAB *hashp);
+extern void hash_stats(const char *where, HTAB *hashp);
+extern void *hash_search(HTAB *hashp, const void *keyPtr, HASHACTION action,
+						 bool *foundPtr);
+extern uint32 get_hash_value(HTAB *hashp, const void *keyPtr);
+extern void *hash_search_with_hash_value(HTAB *hashp, const void *keyPtr,
+										 uint32 hashvalue, HASHACTION action,
+										 bool *foundPtr);
+extern bool hash_update_hash_key(HTAB *hashp, void *existingEntry,
+								 const void *newKeyPtr);
+extern long hash_get_num_entries(HTAB *hashp);
+extern void hash_seq_init(HASH_SEQ_STATUS *status, HTAB *hashp);
+extern void *hash_seq_search(HASH_SEQ_STATUS *status);
+extern void hash_seq_term(HASH_SEQ_STATUS *status);
+extern void hash_freeze(HTAB *hashp);
+extern Size hash_estimate_size(long num_entries, Size entrysize);
+extern long hash_select_dirsize(long num_entries);
+extern Size hash_get_shared_size(HASHCTL *info, int flags);
+extern void AtEOXact_HashTables(bool isCommit);
+extern void AtEOSubXact_HashTables(bool isCommit, int nestDepth);
 
 #endif /* __HSEARCH_H__ */

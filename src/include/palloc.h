@@ -50,7 +50,7 @@ extern void *MemoryContextAllocExtended(MemoryContext context,
 extern void *palloc(Size size);
 extern void *palloc0(Size size);
 extern void *palloc_extended(Size size, int flags);
-//extern pg_nodiscard void *repalloc(void *pointer, Size size);
+extern pg_nodiscard void *repalloc(void *pointer, Size size);
 extern void pfree(void *pointer);
 
 /*
@@ -90,7 +90,7 @@ extern void pfree(void *pointer);
 
 /* Higher-limit allocators. */
 extern void *MemoryContextAllocHuge(MemoryContext context, Size size);
-//extern pg_nodiscard void *repalloc_huge(void *pointer, Size size);
+extern pg_nodiscard void *repalloc_huge(void *pointer, Size size);
 
 /*
  * Although this header file is nominally backend-only, certain frontend

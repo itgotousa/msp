@@ -22,7 +22,6 @@
 
 #define USE_ASSERT_CHECKING
 
-#ifndef _WIN64
-#define _WIN64
-#endif
+#define SIZEOF_VOID_P 8
+
 #endif /* #define __PG_CONFIG_MANUAL_H__ */

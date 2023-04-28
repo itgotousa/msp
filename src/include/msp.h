@@ -12,6 +12,7 @@ extern "C" {
 
 #include "pg_config_manual.h"
 #include "c.h"
+#include "attnum.h"
 #include "miscadmin.h"
 #include "elog.h"
 #include "pg_bitutils.h"
@@ -21,6 +22,14 @@ extern "C" {
 #include "memdebug.h"
 #include "memutils.h"
 #include "hsearch.h"
+#include "pg_list.h"
+#include "bitmapset.h"
+#include "plannodes.h"
+#include "s_lock.h"
+#include "spin.h"
+#include "hashfn.h"
+#include "port.h"
+#include "postgres.h"
 
 #if defined(__cplusplus)
 }

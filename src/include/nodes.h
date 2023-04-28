@@ -1,7 +1,8 @@
 #ifndef __NODES_H__
 #define __NODES_H__
 
-#include "include/c.h"
+#include "include/msp.h"
+
 /*
  * The first field of every node is NodeTag. Each node created (with makeNode)
  * will have one of the following tags as the value of its first field.
@@ -607,7 +608,7 @@ castNodeImpl(NodeTag type, void *ptr)
  *					  extern declarations follow
  * ----------------------------------------------------------------
  */
-#if 0
+
 /*
  * nodes/{outfuncs.c,print.c}
  */
@@ -653,7 +654,7 @@ extern void *copyObjectImpl(const void *obj);
  * nodes/equalfuncs.c
  */
 extern bool equal(const void *a, const void *b);
-#endif
+
 
 /*
  * Typedefs for identifying qualifier selectivities and plan costs as such.
@@ -845,5 +846,6 @@ typedef enum LimitOption
 	LIMIT_OPTION_WITH_TIES,		/* FETCH FIRST... WITH TIES */
 	LIMIT_OPTION_DEFAULT,		/* No limit present */
 } LimitOption;
+
 
 #endif /* __NODES_H__ */

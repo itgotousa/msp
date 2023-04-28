@@ -54,6 +54,8 @@ extern PGDLLIMPORT MemoryContext PortalContext;
 extern void MemoryContextInit(void);
 extern void MemoryContextReset(MemoryContext context);
 extern void MemoryContextDelete(MemoryContext context);
+extern void MemoryContextDeleteAll(MemoryContext context);
+
 extern void MemoryContextResetOnly(MemoryContext context);
 extern void MemoryContextResetChildren(MemoryContext context);
 extern void MemoryContextDeleteChildren(MemoryContext context);

@@ -215,6 +215,42 @@ MemoryContextDelete(MemoryContext context)
 	VALGRIND_DESTROY_MEMPOOL(context);
 }
 
+void
+MemoryContextDeleteAll(MemoryContext context)
+{
+	AssertArg(MemoryContextIsValid(context));
+
+	/* save a function call in common case where there are no children */
+	if (context->firstchild != NULL)
+		MemoryContextDeleteChildren(context);
+
+	/*
+	 * It's not entirely clear whether 'tis better to do this before or after
+	 * delinking the context; but an error in a callback will likely result in
+	 * leaking the whole context (if it's not a root context) if we do it
+	 * after, so let's do it before.
+	 */
+	MemoryContextCallResetCallbacks(context);
+
+	/*
+	 * We delink the context from its parent before deleting it, so that if
+	 * there's an error we won't have deleted/busted contexts still attached
+	 * to the context tree.  Better a leak than a crash.
+	 */
+	MemoryContextSetParent(context, NULL);
+
+	/*
+	 * Also reset the context's ident pointer, in case it points into the
+	 * context.  This would only matter if someone tries to get stats on the
+	 * (already unlinked) context, which is unlikely, but let's be safe.
+	 */
+	context->ident = NULL;
+
+	context->methods->delete_context(context);
+
+	VALGRIND_DESTROY_MEMPOOL(context);
+}
+
 /*
  * MemoryContextDeleteChildren
  *		Delete all the descendants of the named context and release all
