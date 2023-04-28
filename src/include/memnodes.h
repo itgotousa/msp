@@ -23,7 +23,6 @@ typedef struct MemoryContextCounters
 	Size		freespace;		/* The unused portion of totalspace */
 } MemoryContextCounters;
 
-
 /*
  * MemoryContext
  *		A logical context in which memory allocations occur.
@@ -81,6 +80,9 @@ typedef struct MemoryContextData
 	const char *ident;			/* context ID if any (just for debugging) */
 	MemoryContextCallback *reset_cbs;	/* list of reset/delete callbacks */
 } MemoryContextData;
+
+/* utils/palloc.h contains typedef struct MemoryContextData *MemoryContext */
+
 
 /*
  * MemoryContextIsValid

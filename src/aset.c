@@ -1,8 +1,4 @@
-#include "include/c.h"
-#include "include/elog.h"
-#include "include/memnodes.h"
-#include "include/memutils.h"
-#include "include/memdebug.h"
+#include "include/msp.h"
 
 /*--------------------
  * Chunk freelist k holds chunks of size 1 << (k + ALLOC_MINBITS),
@@ -282,10 +278,8 @@ AllocSetFreeIndex(Size size)
 		 * much trouble.
 		 *----------
 		 */
-//#ifdef HAVE__BUILTIN_CLZ
-#ifdef _WIN64
-		/* idx = 31 - __builtin_clz((uint32) size - 1) - ALLOC_MINBITS + 1; */
-		idx = 31 - LZCNT32__((uint32) size - 1) - ALLOC_MINBITS + 1;
+#ifdef HAVE__BUILTIN_CLZ
+		idx = 31 - __builtin_clz((uint32) size - 1) - ALLOC_MINBITS + 1; 
 #else
 		uint32		t,
 					tsize;
@@ -1292,6 +1286,7 @@ AllocSetStats(MemoryContext context,
 			  MemoryStatsPrintFunc printfunc, void *passthru,
 			  MemoryContextCounters *totals, bool print_to_stderr)
 {
+#if 0	
 	AllocSet	set = (AllocSet) context;
 	Size		nblocks = 0;
 	Size		freechunks = 0;
@@ -1339,6 +1334,7 @@ AllocSetStats(MemoryContext context,
 		totals->totalspace += totalspace;
 		totals->freespace += freespace;
 	}
+#endif 	
 }
 
 
