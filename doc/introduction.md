@@ -35,6 +35,9 @@ MSP使用到的第三方部件有：
 - 类的成员变量均以m_开头，和非类变量区别开来
 - 从PostgreSQL拷贝的源码保持文件名、变量名和函数名不变。
 
+遵循的规范
+- Markdown采用[Commonmark](https://spec.commonmark.org)
+- SVG目前支持SVG 1.1标准
 
 ***
 
