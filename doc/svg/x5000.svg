@@ -1,0 +1,202 @@
+<svg version="1.1" width="700" height="146" xmlns="http://www.w3.org/2000/svg" >
+<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" /></marker></defs>
+<path id="bottomxline" d="M 10 145 h 580" stroke="#FFFFFF" stroke-width="1" fill="none" />
+<g transform="translate(-7, -15)">
+<g transform="translate(30, 20)">
+<text x="-20" y="13" style="font-size:13px;font-family:'Arial'">(a)</text>
+<path d="M 20 0 h -20 v 20 h 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="20" y="0" width="140" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 40 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(30, 60)">
+<text x="-20" y="13" style="font-size:13px;font-family:'Arial'">(b)</text>
+<path d="M 60 0 h -60 v 20 h 60" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="60" y="0" width="100" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 40 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(195, 60)">
+<path d="M 40 0 h -40 v 20 h 40" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="40" y="0" width="120" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(30, 100)">
+<text x="-20" y="13" style="font-size:13px;font-family:'Arial'">(c)</text>
+<path d="M 80 0 h -80 v 20 h 80" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="80" y="0" width="80" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 40 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(195, 100)">
+<path d="M 40 0 h -40 v 20 h 40" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="40" y="0" width="120" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(360, 100)">
+<path d="M 40 0 h -40 v 20 h 40" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="40" y="0" width="120" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(30, 140)">
+<text x="-20" y="13" style="font-size:13px;font-family:'Arial'">(d)</text>
+<path d="M 120 0 h -120 v 20 h 120" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="100" y="0" width="60" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 40 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(195, 140)">
+<path d="M 40 0 h -40 v 20 h 40" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="40" y="0" width="120" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(360, 140)">
+<path d="M 40 0 h -40 v 20 h 40" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="40" y="0" width="120" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+
+<g transform="translate(525, 140)">
+<path d="M 40 0 h -40 v 20 h 40" stroke="#0000FF" stroke-width="1" fill="none" />
+<rect x="40" y="0" width="120" height="20" style="fill:#DAE8FC;stroke:#0000FF;stroke-width:1" />
+<path d="M 20 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 60 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 80 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 100 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 120 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<path d="M 140 0 v 20" stroke="#0000FF" stroke-width="1" fill="none" />
+<text x="7" y="15" style="font-size:13px;font-family:'Arial'">1</text>
+<text x="26" y="15" style="font-size:13px;font-family:'Arial'">0</text>
+<text x="46" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="66" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="86" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="106" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="126" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+<text x="146" y="15" style="font-size:13px;font-family:'Arial'">X</text>
+</g>
+</g>
+</svg>
