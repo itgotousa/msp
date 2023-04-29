@@ -13,6 +13,8 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 
 追求极度简约是MSP的设计哲学。MSP最终的可执行文件在Windows平台上为msp.exe。和该程序同一个目录下只有一个显示配置msp.json和一个运行日志文件msp.log。msp.json是json格式，里面规定的显示的宽度，字体和其它布局信息。如果你设计了比较好的显示主题，可以和其它用户分享，只要把msp.json拷贝给别的用户即可。
 
+![](svg/x0003.svg)
+
 MSP使用到的第三方部件有：
 - zlib
 - libpng
