@@ -1,7 +1,7 @@
 
 ## 什么是MSP?
 
-MSP是一个开源的，极简约的文档阅读器，支持Markdown, SVG和PNG的显示，故名MSP(Markdown + SVG + PNG)。为了保持软件的体积最小，不支持其它任何格式的内容。MSP阅读器的目标是支持Win64/MacOS/iOS/Linux平台。
+MSP是一个开源的，百分百原生的，极简约的文档阅读器，支持Markdown, SVG和PNG的显示，故名MSP(Markdown + SVG + PNG)。MSP不依赖除了操作系统以外的任何第三方的软件。为了保持软件的体积最小，MSP不支持除了Markdown/SVG和PNG以外的其它任何格式的内容。MSP阅读器的目标是支持Win64/MacOS/iOS/Linux平台。
 
 MSP的体系架构如下：
 
@@ -10,6 +10,8 @@ MSP的体系架构如下：
 MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 
 ![](svg/x0002.svg)
+
+追求极度简约是MSP的设计哲学。MSP最终的可执行文件在Windows平台上为msp.exe。和该程序同一个目录下只有一个显示配置msp.json和一个运行日志文件msp.log。msp.json是json格式，里面规定的显示的宽度，字体和其它布局信息。如果你设计了比较好的显示主题，可以和其它用户分享，只要把msp.json拷贝给别的用户即可。
 
 MSP使用到的第三方部件有：
 - zlib
