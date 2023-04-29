@@ -26,7 +26,8 @@ MSP使用到的第三方部件有：
 - 最小化调用操作系统的功能。
 - 大量借鉴PostgreSQL的源代码，因为作者是PostgreSQL DBA
 - Windows下只支持64位编译。
-- 在Windows下的渲染使用Direct2D和DirectWrite技术，支持GPU硬件加速
+- 在Windows下的渲染使用Direct2D和DirectWrite技术，支持GPU硬件加速。
+- 第一版是单窗口模式，未来计划参考[Windows Terminal](https://github.com/microsoft/terminal)的源代码变成多Tab结构。
 
 编写代码的几点考量
 - *.cpp是C++代码, *.c是纯C代码，*.h是C的头文件，*.hpp是C++的头文件。
