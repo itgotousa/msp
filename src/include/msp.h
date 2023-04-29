@@ -30,6 +30,7 @@ extern "C" {
 #include "hashfn.h"
 #include "port.h"
 #include "postgres.h"
+#include "stringinfo.h"
 
 #if defined(__cplusplus)
 }
