@@ -17,3 +17,23 @@ Markdown文档被解析器解析后，形成一个语法树。渲染引擎在把
 - MDList节点
 - MDCode节点
 - MDLink节点
+
+### 控制显示的参数
+
+![](svg/x5002.svg)
+
+在msp.json文件中设置各种显示的参数：
+- top_margin : Markdown显示区域距离屏幕顶端的距离，单位是像素。
+- bottom_margin : Markdown显示区域距离屏幕底端的距离，单位是像素。
+- width : Markdown显示区域的宽度，单位是像素。
+- text_font : 正文使用的字体
+- text_color : 正文的颜色
+- h1_font : 一级标题使用的字体
+- h2_font : 二级标题使用的字体
+- h3_font : 三级标题使用的字体
+- h4_font : 四级标题使用的字体
+- h5_font : 五级标题使用的字体
+- h6_font : 六级标题使用的字体
+- link_color : 超链的颜色
+- 后面继续设置。
+
