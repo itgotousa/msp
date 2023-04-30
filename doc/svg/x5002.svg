@@ -18,6 +18,8 @@
 <text x="510" y="263" style="font-size:13px;font-family:'Arial'">bottom_margin</text>
 
 <text x="280" y="283" style="font-size:13px;font-family:'Arial'">width</text>
+<text x="130" y="95" style="font-size:13px;font-family:'Microsoft Yahei'">屏幕</text>
+<text x="240" y="95" style="font-size:13px;font-family:'Microsoft Yahei'">Markdown显示区域</text>
 
 <path d="M 300 290 H 212" stroke="#000000" stroke-width="1" fill="none" marker-end="url(#arrowhead)"/>
 <path d="M 300 290 H 388" stroke="#000000" stroke-width="1" fill="none" marker-end="url(#arrowhead)"/>
