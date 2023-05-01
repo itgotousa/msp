@@ -37,3 +37,7 @@ Markdown文档被解析器解析后，形成一个语法树。渲染引擎在把
 - link_color : 超链的颜色
 - 后面继续设置。
 
+### 渲染引擎
+
+我打算采用Windows Terminal中最新的Atlas文本渲染引擎来做MSP的文本渲染。 本节内容提供了我对Atlas的研究成果。
+
