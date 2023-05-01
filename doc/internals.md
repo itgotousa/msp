@@ -1,6 +1,26 @@
 
 ## 设计内幕
 
+MSP使用到的第三方部件有：
+- zlib
+- libpng
+- WTL as the GUI interface of Win64 platform.
+
+由于作者对Windows平台的开发最为熟悉，所以本项目优先实现在Windows平台上的开发。以下是几点设计上的考虑
+- 把平台无关的代码和操作系统相关的代码分开，方便移植。
+- 使用CMake作为跨平台编译的构建系统。
+- 最小化调用操作系统的功能。
+- 大量借鉴PostgreSQL的源代码，因为作者是PostgreSQL DBA
+- Windows下只支持64位编译。
+- 在Windows下的渲染使用Direct2D和DirectWrite技术，支持GPU硬件加速。
+- 第一版是单窗口模式，未来计划参考[Windows Terminal](https://github.com/microsoft/terminal)的源代码变成多Tab结构。
+
+编写代码的几点考量
+- *.cpp是C++代码, *.c是纯C代码，*.h是C的头文件，*.hpp是C++的头文件。
+- 和平台无关的class的命名使用M开头，如MParser。和平台相关的用N开头，表示Native，如NRender
+- 类的成员变量均以m_开头，和非类变量区别开来
+- 从PostgreSQL拷贝的源码保持文件名、变量名和函数名不变。
+
 ### utf8编码
 
 ![](svg/x5000.svg)

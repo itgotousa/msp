@@ -37,7 +37,7 @@ MSP使用到的第三方部件有：
 
 遵循的规范
 - Markdown采用[Commonmark](https://spec.commonmark.org)
-- SVG目前支持SVG 1.1标准
+- SVG目前支持[SVG 1.1](https://www.w3.org/TR/2011/REC-SVG11-20110816/)标准
 
 ***
 
