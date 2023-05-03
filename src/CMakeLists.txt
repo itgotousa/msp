@@ -14,5 +14,5 @@ add_subdirectory(arch/windows)
 
 
 # cmake -G "NMake Makefiles" D:\code\msp\src
-# cmake -G "NMake Makefiles" D:\code\msp\src -DCMAKE_BUILD_TYPE=Debug -DCMAKE_GENERATOR_PLATFORM=x64
+# cmake -G "NMake Makefiles" D:\code\msp\src -DCMAKE_BUILD_TYPE=Debug
 # cmake -G "Visual Studio 16 2019" D:\code\msp\src -A X64
