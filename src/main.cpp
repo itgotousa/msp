@@ -1,3 +1,6 @@
+
+#ifndef _WIN32
+
 #include <stdio.h>
 #include "include/msp.h"
 
@@ -59,3 +62,5 @@ int main(int argc, char* argv[])
     
     return 0;
 }
+
+#endif 
