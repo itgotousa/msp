@@ -41,8 +41,11 @@ Markdown文档被解析器解析后，形成一个语法树。渲染引擎在把
 ### 源代码目录布局
 MSP的源代码把平台无关的部分和平台相关部分分开。
 - 源代码目录 msp/src，在这里包含了全部的原代码
-- 源代码目录 msp/src/include中包含头文件
-- msp/src/arch包含对应的平台相关代码
+- msp/src/pgcore中包含来自PostgreSQL内核的源代码
+- msp/src/arch包含对应的平台相关代码，分为windows/mac/linux/ios/android
+- msp/src/svg中包含svg和平台无关的代码
+- msp/src/md中包含markdown文件和平台无关的代码。
+
 
 ### 控制显示的参数
 
