@@ -225,6 +225,7 @@ public:
 			ATLASSERT(menuPopup != NULL);
 			// Display the menu				
 			// Using command bar TrackPopupMenu method means menu icons are displayed
+			menuPopup.CheckMenuItem(IDM_MONITOR, g_monitor? MF_UNCHECKED : MF_CHECKED);
 			m_CmdBar.TrackPopupMenu(menuPopup, TPM_RIGHTBUTTON | TPM_VERTICAL, pt.x, pt.y);
 		}
 		return 0;
