@@ -9,6 +9,9 @@ class CView : public CScrollWindowImpl<CView>
 public:
 	DECLARE_WND_CLASS(NULL)
 
+	CBitmap   m_bmpLogo;
+	SIZE      m_szLogo;
+
 	BOOL PreTranslateMessage(MSG* pMsg)
 	{
 		pMsg;
@@ -18,6 +21,33 @@ public:
 	void DoPaint(CDCHandle dc)
 	{
 		//TODO: Add your drawing code here
+#if 0
+		SIZE sz;
+		RECT rc = { 0 };
+		CDC dcMem, dcTemp;
+		CBitmap bmpMem;
+		CBrush brush;
+		HBITMAP hbmpOld, hbmpTemp;
+
+		GetClientRect(&rc);
+		GetScrollSize(sz);
+		if (sz.cx > rc.right)  rc.right = sz.cx;
+		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
+
+		dcMem.CreateCompatibleDC(dc);
+		bmpMem.CreateCompatibleBitmap(dc, rc.right, rc.bottom);
+		hbmpOld = dcMem.SelectBitmap(bmpMem);
+		brush.CreateSolidBrush(RGB(255, 255, 255));
+		dcMem.FillRect(&rc, brush);
+
+		dcTemp.CreateCompatibleDC(dcMem);
+		hbmpTemp = dcTemp.SelectBitmap(m_bmpLogo);
+		dcMem.BitBlt((rc.right - m_szLogo.cx)>>1, (rc.bottom - m_szLogo.cy)>>1, m_szLogo.cx, m_szLogo.cy, dcTemp, 0, 0, SRCCOPY);
+		dcTemp.SelectBitmap(hbmpTemp);
+
+		dc.BitBlt(0, 0, rc.right, rc.bottom, dcMem, 0, 0, SRCCOPY);
+		dcMem.SelectBitmap(hbmpOld);
+#endif 		
 	}
 
 	BEGIN_MSG_MAP(CView)
@@ -34,6 +64,8 @@ public:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
+		//m_bmpLogo.LoadBitmap(IDR_BMP_LOGO);
+		//m_bmpLogo.GetSize(m_szLogo);
 
 		return 0;
 	}
@@ -58,6 +90,5 @@ public:
         ::PostMessage(GetTopLevelParent(), WM_NCLBUTTONDOWN, HTCAPTION, lParam);
 		return 0;
 	}
-
 
 };

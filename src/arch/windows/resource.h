@@ -14,7 +14,7 @@
 
 #define IDM_MAINMENU                130
 #define IDM_MONITOR                 131
-
+#define IDR_BMP_LOGO                132
 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS

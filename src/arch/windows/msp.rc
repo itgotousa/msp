@@ -67,7 +67,7 @@ END
 //
 
 IDR_MAINFRAME           BITMAP                  "res\\toolbar.bmp"
-
+//IDR_BMP_LOGO            BITMAP                  "res\\logo.bmp"
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu
@@ -247,6 +247,7 @@ STRINGTABLE
 BEGIN
     ID_FILE_NEW             "Create a new document\nNew"
     ID_FILE_OPEN            "Open an existing document\nOpen a md/svg/png file"
+    IDM_MAINMENU            "Main Menu\nMain Menu"
     IDM_MONITOR             "Monitor an existing document\nMonitor the change of the file"
     ID_FILE_CLOSE           "Close the active document\nClose"
     ID_FILE_SAVE            "Save the active document\nSave"

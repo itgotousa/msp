@@ -26,7 +26,7 @@ BOOL g_monitor = FALSE;
 
 CAppModule _Module;
 
-class CmspThreadManager
+class CMspThreadManager
 {
 public:
 	// thread init param
@@ -72,7 +72,7 @@ public:
 	DWORD m_dwCount;
 	HANDLE m_arrThreadHandles[MAXIMUM_WAIT_OBJECTS - 1];
 
-	CmspThreadManager() : m_dwCount(0)
+	CMspThreadManager() : m_dwCount(0)
 	{ }
 
 // Operations
@@ -154,7 +154,7 @@ static int InitInstance(HINSTANCE hInstance)
 
 	g_fileloaded = FALSE;
 	g_monitor = FALSE;
-	
+
 	return 0;
 }
 
@@ -179,9 +179,11 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	nRet = InitInstance(hInstance);
 	// BLOCK: Run application
 	{
-		CmspThreadManager mgr;
+		CMspThreadManager mgr;
 		nRet = mgr.Run(lpstrCmdLine, nCmdShow);
 	}
+
+	ExitInstance(hInstance);
 
 	_Module.Term();
 	::CoUninitialize();

@@ -171,7 +171,28 @@ public:
 
 	LRESULT OnFileOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
-		// TODO: add code to initialize document
+		OPENFILENAME ofn = { 0 };       // common dialog box structure
+		TCHAR path[MAX_PATH + 1] = { 0 };
+
+		// Initialize OPENFILENAME
+		ofn.lStructSize = sizeof(OPENFILENAMEW);
+		ofn.hwndOwner = m_hWnd;
+		ofn.lpstrFile = path;
+		//
+		// Set lpstrFile[0] to '\0' so that GetOpenFileName does not 
+		// use the contents of file to initialize itself.
+		//
+		ofn.lpstrFile[0] = _T('\0');
+		ofn.nMaxFile = MAX_PATH; //sizeof(path) / sizeof(TCHAR);
+		ofn.lpstrFilter = _T("markdown file(*.md)\0*.md\0all files(*.*)\0*.*\0\0");
+		ofn.nFilterIndex = 1;
+		ofn.lpstrFileTitle = NULL;
+		ofn.nMaxFileTitle = 0;
+		ofn.lpstrInitialDir = NULL;
+		ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+		/* Display the Open dialog box. */
+		if (GetOpenFileName(&ofn) != TRUE) return 0;
 
 		return 0;
 	}
