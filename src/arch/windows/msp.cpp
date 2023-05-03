@@ -1,5 +1,9 @@
 // msp.cpp : main source file for msp.exe
 //
+#ifndef _UNICODE
+#define _UNICODE
+#define UNICODE
+#endif 
 
 #include "stdafx.h"
 
@@ -10,10 +14,15 @@
 #include <atlscrl.h>
 
 #include "resource.h"
-
+#include "msp.h"
 #include "View.h"
 #include "aboutdlg.h"
 #include "MainFrm.h"
+
+static TCHAR  file_path[MAX_PATH + 1] = { 0 };
+TCHAR *g_file = NULL;
+BOOL g_fileloaded = FALSE;
+BOOL g_monitor = FALSE;
 
 CAppModule _Module;
 
@@ -36,7 +45,15 @@ public:
 		_RunData* pData = (_RunData*)lpData;
 		CMainFrame wndFrame;
 
-		if(wndFrame.CreateEx() == NULL)
+		RECT desktop, rc;
+		// Get a handle to the desktop window
+		const HWND hDesktop = ::GetDesktopWindow();
+		// Get the size of screen to the variable desktop
+		::GetWindowRect(hDesktop, &desktop);
+		rc.top = rc.left = 0;
+		rc.right = desktop.right >> 2;
+		rc.bottom = desktop.bottom - 200;
+		if(wndFrame.CreateEx(NULL, rc) == NULL)
 		{
 			ATLTRACE(_T("Frame window creation failed!\n"));
 			return 0;
@@ -131,6 +148,22 @@ public:
 	}
 };
 
+static int InitInstance(HINSTANCE hInstance)
+{
+	g_file = (TCHAR*)file_path;
+
+	g_fileloaded = FALSE;
+	g_monitor = FALSE;
+	
+	return 0;
+}
+
+static int ExitInstance(HINSTANCE hInstance)
+{
+	return 0;
+}
+
+
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow)
 {
 	HRESULT hRes = ::CoInitialize(NULL);
@@ -142,6 +175,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	ATLASSERT(SUCCEEDED(hRes));
 
 	int nRet = 0;
+
+	nRet = InitInstance(hInstance);
 	// BLOCK: Run application
 	{
 		CmspThreadManager mgr;

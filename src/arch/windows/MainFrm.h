@@ -64,10 +64,12 @@ public:
 	END_UPDATE_UI_MAP()
 
 	BEGIN_MSG_MAP(CMainFrame)
+		MESSAGE_HANDLER(WM_UI_NOTIFY, OnUINotify)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		COMMAND_ID_HANDLER(ID_APP_EXIT, OnFileExit)
-		COMMAND_ID_HANDLER(ID_FILE_NEW, OnFileNew)
+		COMMAND_ID_HANDLER(ID_FILE_OPEN, OnFileOpen)
+		COMMAND_ID_HANDLER(IDM_MONITOR, OnFileMonitor)
 		COMMAND_ID_HANDLER(ID_FILE_NEW_WINDOW, OnFileNewWindow)
 		COMMAND_ID_HANDLER(ID_VIEW_TOOLBAR, OnViewToolBar)
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
@@ -102,15 +104,22 @@ public:
 		AddSimpleReBarBand(hWndCmdBar);
 		AddSimpleReBarBand(hWndToolBar, NULL, TRUE);
 
-		// CreateSimpleStatusBar();
+		//CreateSimpleStatusBar();
 
 		m_hWndClient = m_view.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, WS_EX_CLIENTEDGE);
 		// replace with appropriate values for the app
-		m_view.SetScrollSize(10, 10);
+		m_view.SetScrollSize(1, 1);
 
 		UIAddToolBar(hWndToolBar);
 		UISetCheck(ID_VIEW_TOOLBAR, 1);
-		// UISetCheck(ID_VIEW_STATUS_BAR, 1);
+		//UISetCheck(ID_VIEW_STATUS_BAR, 1);
+
+		CToolBarCtrl toolbar = m_hWndTB;
+		toolbar.EnableButton(IDM_MONITOR, FALSE);
+		// Get a handle to the status bar
+		//CStatusBarCtrl statusBar = m_hWndStatusBar;
+		// Set the text of the first pane to "Ready"
+		//SetPaneText(0, _T("Ready"));
 
 		// register object for message filtering and idle updates
 		CMessageLoop* pLoop = _Module.GetMessageLoop();
@@ -133,13 +142,34 @@ public:
 		return 1;
 	}
 
+	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+	{
+		if(TRUE == g_fileloaded) 
+		{
+			CToolBarCtrl toolbar = m_hWndTB;
+			toolbar.EnableButton(IDM_MONITOR, TRUE);
+			toolbar.CheckButton(IDM_MONITOR, TRUE);
+			SetWindowText(g_file);
+		}
+		return 0;
+	}
+
 	LRESULT OnFileExit(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
 		PostMessage(WM_CLOSE);
 		return 0;
 	}
 
-	LRESULT OnFileNew(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+	LRESULT OnFileMonitor(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+	{
+		// TODO: add code to initialize document
+		CToolBarCtrl toolbar = m_hWndTB;
+		toolbar.CheckButton(IDM_MONITOR, g_monitor);
+		g_monitor = ! g_monitor;
+		return 0;
+	}
+
+	LRESULT OnFileOpen(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
 		// TODO: add code to initialize document
 

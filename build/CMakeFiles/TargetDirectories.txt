@@ -1,0 +1,5 @@
+D:/Code/msp/build/CMakeFiles/edit_cache.dir
+D:/Code/msp/build/CMakeFiles/rebuild_cache.dir
+D:/Code/msp/build/arch/windows/CMakeFiles/msp-win64.dir
+D:/Code/msp/build/arch/windows/CMakeFiles/edit_cache.dir
+D:/Code/msp/build/arch/windows/CMakeFiles/rebuild_cache.dir
