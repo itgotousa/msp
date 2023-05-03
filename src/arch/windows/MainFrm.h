@@ -98,7 +98,7 @@ public:
 		HWND hWndToolBar = CreateSimpleToolBarCtrl(m_hWnd, IDR_MAINFRAME, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST);
         m_hWndTB = hWndToolBar;
         
-		AddToolbarButtonText(m_hWndTB, IDM_MAINMENU, _T("Menu(&M)"));
+		//AddToolbarButtonText(m_hWndTB, IDM_MAINMENU, _T("Menu(&M)"));
 
 		CreateSimpleReBar(ATL_SIMPLE_REBAR_NOBORDER_STYLE);
 		AddSimpleReBarBand(hWndCmdBar);
