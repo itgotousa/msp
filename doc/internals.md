@@ -66,7 +66,14 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 - link_color : 超链的颜色
 - 后面继续设置。
 
-### 渲染引擎
+### Text渲染引擎
 
 我打算采用Windows Terminal中最新的Atlas文本渲染引擎来做MSP的文本渲染。 本节内容提供了我对Atlas的研究成果。
+
+### SVG渲染引擎
+
+cmake -Bbuild/win64 -H. -G "Visual Studio 16 2019" -DGDIPLUS=ON -DD2D=ON
+
+
+SVGDocument
 
