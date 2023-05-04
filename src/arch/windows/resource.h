@@ -2,7 +2,8 @@
 // Microsoft Visual C++ generated include file.
 // Used by msp.RC
 //
-
+//#ifndef __RESOURCE_H__
+//#define __RESOURCE_H__
 
 #define IDD_ABOUTBOX				100
 #define IDR_MAINFRAME				128
@@ -24,3 +25,6 @@
 #define _APS_NEXT_COMMAND_VALUE		32775
 #endif
 #endif
+
+// #endif  /* __RESOURCE_H__ */
+

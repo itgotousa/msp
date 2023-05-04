@@ -18,6 +18,25 @@ extern CAppModule _Module;
 
 #include <atlwin.h>
 
+#include <WinBase.h>
+#include <VersionHelpers.h>
+// C RunTime Header Files
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <memory.h>
+#include <tchar.h>
+#include <process.h>
+#include <Shellapi.h>
+#include <Strsafe.h>
+#include <io.h>
+#include <fcntl.h>
+#include <share.h>
+#include <sys/stat.h>
+
+#include <d2d1.h>
+#pragma comment(lib, "d2d1.lib")
+
 #if defined _M_IX86
   #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #elif defined _M_IA64

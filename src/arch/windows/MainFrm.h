@@ -149,7 +149,7 @@ public:
 			CToolBarCtrl toolbar = m_hWndTB;
 			toolbar.EnableButton(IDM_MONITOR, TRUE);
 			toolbar.CheckButton(IDM_MONITOR, TRUE);
-			SetWindowText(g_file);
+			SetWindowText(g_filepath);
 		}
 		return 0;
 	}
@@ -193,6 +193,8 @@ public:
 
 		/* Display the Open dialog box. */
 		if (GetOpenFileName(&ofn) != TRUE) return 0;
+
+		m_view.OpenMSPFile(path);
 
 		return 0;
 	}

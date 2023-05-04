@@ -6,6 +6,8 @@
 #endif 
 
 #include "stdafx.h"
+#include <wchar.h>
+#include <io.h>
 #include <d2d1.h>
 #pragma comment(lib, "d2d1.lib")
 
@@ -16,15 +18,17 @@
 #include <atlscrl.h>
 
 #include "resource.h"
-#include "msp.h"
+#include "mspwin.h"
+
 #include "View.h"
 #include "aboutdlg.h"
 #include "MainFrm.h"
 
-static TCHAR  file_path[MAX_PATH + 1] = { 0 };
-TCHAR *g_file = NULL;
-BOOL g_fileloaded = FALSE;
-BOOL g_monitor = FALSE;
+TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
+BOOL 	g_fileloaded = FALSE;
+BOOL 	g_monitor = FALSE;
+unsigned char *g_buffer = NULL;
+
 ID2D1Factory    *g_pFactory = NULL;
 
 CAppModule _Module;
@@ -153,11 +157,12 @@ public:
 
 static int InitInstance(HINSTANCE hInstance)
 {
-	g_file = (TCHAR*)file_path;
-
 	g_fileloaded = FALSE;
 	g_monitor = FALSE;
 	g_pFactory = NULL;
+	g_buffer = NULL;
+
+	ZeroMemory(g_filepath, MAX_PATH + 1);
 
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &g_pFactory);
 	if(FAILED(hr)) return -1;
@@ -167,6 +172,7 @@ static int InitInstance(HINSTANCE hInstance)
 
 static int ExitInstance(HINSTANCE hInstance)
 {
+	if(NULL != g_buffer) free(g_buffer);
 	return 0;
 }
 
@@ -190,9 +196,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 		nRet = mgr.Run(lpstrCmdLine, nCmdShow);
 	}
 
+app_quit:
 	ExitInstance(hInstance);
 
-app_quit:
 	_Module.Term();
 	::CoUninitialize();
 
