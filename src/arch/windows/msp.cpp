@@ -6,6 +6,8 @@
 #endif 
 
 #include "stdafx.h"
+#include <d2d1.h>
+#pragma comment(lib, "d2d1.lib")
 
 #include <atlframe.h>
 #include <atlctrls.h>
@@ -23,6 +25,7 @@ static TCHAR  file_path[MAX_PATH + 1] = { 0 };
 TCHAR *g_file = NULL;
 BOOL g_fileloaded = FALSE;
 BOOL g_monitor = FALSE;
+ID2D1Factory    *g_pFactory = NULL;
 
 CAppModule _Module;
 
@@ -154,6 +157,10 @@ static int InitInstance(HINSTANCE hInstance)
 
 	g_fileloaded = FALSE;
 	g_monitor = FALSE;
+	g_pFactory = NULL;
+
+	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &g_pFactory);
+	if(FAILED(hr)) return -1;
 
 	return 0;
 }
@@ -174,9 +181,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	hRes = _Module.Init(NULL, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));
 
-	int nRet = 0;
+	int nRet = InitInstance(hInstance);
 
-	nRet = InitInstance(hInstance);
+	if(0 != nRet) goto app_quit;
 	// BLOCK: Run application
 	{
 		CMspThreadManager mgr;
@@ -185,6 +192,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 
 	ExitInstance(hInstance);
 
+app_quit:
 	_Module.Term();
 	::CoUninitialize();
 

@@ -9,5 +9,7 @@ extern TCHAR *g_file;
 extern BOOL g_fileloaded;
 extern BOOL g_monitor;
 
+extern  ID2D1Factory    *g_pFactory;
+
 #endif /* __MSPWIN_H__ */
 

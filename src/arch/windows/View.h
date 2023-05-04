@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include <d2d1.h>
-#pragma comment(lib, "d2d1.lib")
-
 template <class T> void SafeRelease(T **ppT)
 {
     if (*ppT)
@@ -42,13 +39,15 @@ public:
 			D2D1_SIZE_F size = m_pRenderTarget->GetSize();
 			const float x = size.width / 2;
 			const float y = size.height / 2;
-			const float radius = min(x, y);
+			const float radius = min(x/2, y/2);
 			m_ellipse = D2D1::Ellipse(D2D1::Point2F(x, y), radius, radius);
 		}
 	}
 
 	HRESULT CreateGraphicsResources()
 	{
+		if(NULL == g_pFactory) return S_FALSE;
+
 		HRESULT hr = S_OK;
 		if (NULL == m_pRenderTarget)
 		{
@@ -57,7 +56,7 @@ public:
 
 			D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
 
-			hr = m_pFactory->CreateHwndRenderTarget(
+			hr = g_pFactory->CreateHwndRenderTarget(
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties(m_hWnd, size),
 				&m_pRenderTarget);
@@ -112,10 +111,7 @@ public:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
-
-		HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pFactory);
-		if(FAILED(hr)) return -1;
-
+		HRESULT hr = CreateGraphicsResources();
 		return 0;
 	}
 
@@ -123,7 +119,7 @@ public:
 	{
 		SafeRelease(&m_pRenderTarget);
 		SafeRelease(&m_pBrush);
-
+		SafeRelease(&g_pFactory);
 		return 0;
 	}
 
