@@ -23,8 +23,8 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 
 
 ## 在Windows下的编译方法
-- 安装Visual Studio 2019 社区版，免费的，为微软的良心点赞
-- 安装最新版的CMake，就是一个.exe，鼠标双击即可。
+- 安装Visual Studio 2019 社区版，免费的，为微软的良心点赞。建议使用VS2019，因为最新版的CMake只支持到了VS2019。
+- 安装最新版的[CMake](https://cmake.org)，就是一个.exe文件，鼠标双击即可。
 - git clone https://github.com/itgotousa/msp.git 或下载本项目的zip包
 - 假设本项目的目录在D:\github\msp目录下，在其中建立一个build目录.
 - 打开Visual Studio 2019的X64 Native Tools Command Prompt for VS 2019窗口，切换到D:\github\msp\build目录。
@@ -33,8 +33,12 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 - 编译好的可执行文件是：D:\github\msp\build\arch\windows\msp-win64.exe
 
 
+
 ***
 
-如果你有兴趣一同开发，请联系itgotousa@gmail.com
+如果你在编译过程中出现问题，或者有兴趣一同开发，请联系itgotousa@gmail.com
+
+Enjoy coding, enjoy life!
+
 
 
