@@ -20,9 +20,42 @@ typedef enum
     filePNG
 } fileType;
 
+#define UI_NOTIFY_MONITOR	0x01
+#define UI_NOTIFY_FILEOPN	0x02
+
+unsigned WINAPI _monitor_msp_thread(LPVOID lpData)
+{
+	DWORD dwRet;
+	HWND hWndUI = (HWND)lpData;
+	ATLASSERT(::IsWindow(hWndUI));
+
+	g_kaSignal[1] = FindFirstChangeNotification(g_filepath, FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE);
+
+	if(INVALID_HANDLE_VALUE == g_kaSignal[1]) {
+		MessageBox(NULL, g_filepath, _T("Cannot Monitor"), MB_OK);
+		return 0;
+	}
+
+	InterlockedIncrement(&g_threadCount);
+
+	dwRet = MsgWaitForMultipleObjects(2, g_kaSignal, FALSE, INFINITE, QS_ALLINPUT);
+
+	if(WAIT_OBJECT_0 + 1 == dwRet)
+	{
+		//MessageBox(NULL, g_filepath, _T("MB_OK"), MB_OK);
+		PostMessage(hWndUI, WM_UI_NOTIFY, UI_NOTIFY_MONITOR, 0);
+	}
+
+	InterlockedDecrement(&g_threadCount);
+
+	MessageBox(NULL, _T("Monitoring thead is quiting!"), _T("MB_OK"), MB_OK);
+
+	return 0;
+}
+
 unsigned WINAPI open_msp_thread(LPVOID lpData)
 {
-	unsigned char *p;
+	char *p;
 	int   fd;
 	unsigned int size, align_size, bytes, ret;
 	fileType ft = fileUnKnown;
@@ -46,7 +79,7 @@ unsigned WINAPI open_msp_thread(LPVOID lpData)
 
 	if(NULL != g_buffer) { free(g_buffer); }
 
-	g_buffer = (unsigned char*)malloc(align_size);
+	g_buffer = (char*)malloc(align_size);
 	if (NULL == g_buffer)
 	{
 		_close(fd);
@@ -77,7 +110,7 @@ unsigned WINAPI open_msp_thread(LPVOID lpData)
 		g_buffer = NULL;
 	}
 
-	PostMessage(hWndUI, WM_UI_NOTIFY, 0, ft);
+	PostMessage(hWndUI, WM_UI_NOTIFY, UI_NOTIFY_FILEOPN, ft);
 
 	return 0;
 }
@@ -212,7 +245,7 @@ public:
 			ZeroMemory(g_filepath, MAX_PATH + 1);
 			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH + 1);
 			g_fileloaded = TRUE;
-			_beginthreadex(NULL, 0, open_msp_thread, m_hWnd, 0, NULL);
+			_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
 
 			::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 		}
@@ -248,12 +281,19 @@ public:
 		wmemcpy((wchar_t*)g_filepath, lpszURL, MAX_PATH + 1);
 		g_fileloaded = TRUE;
 
-		_beginthreadex(NULL, 0, open_msp_thread, m_hWnd, 0, NULL);
+		_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
+		// _beginthreadex(NULL, 0, open_msp_thread, m_hWnd, 0, NULL);
 		return 0;
 	}
 
 	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
 	{
+		if(UI_NOTIFY_MONITOR == lParam)
+		{
+			MessageBox(_T("File is changed"), _T("MB_OK"), MB_OK);
+		}
+
+#if 0		
 		fileType ft = (fileType)lParam;
 
 		switch(ft)
@@ -264,7 +304,7 @@ public:
 			default:
 				return 0;
 		}
-
+#endif 
 		return 0;
 	}
 

@@ -6,10 +6,6 @@
 #endif 
 
 #include "stdafx.h"
-#include <wchar.h>
-#include <io.h>
-#include <d2d1.h>
-#pragma comment(lib, "d2d1.lib")
 
 #include <atlframe.h>
 #include <atlctrls.h>
@@ -24,10 +20,12 @@
 #include "aboutdlg.h"
 #include "MainFrm.h"
 
-TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
+LONG	g_threadCount = 0;
 BOOL 	g_fileloaded = FALSE;
 BOOL 	g_monitor = FALSE;
-unsigned char *g_buffer = NULL;
+char   *g_buffer = NULL;
+HANDLE  g_kaSignal[2] = {NULL, NULL};
+TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
 
 ID2D1Factory    *g_pFactory = NULL;
 
@@ -157,10 +155,17 @@ public:
 
 static int InitInstance(HINSTANCE hInstance)
 {
+	g_threadCount = 0;
 	g_fileloaded = FALSE;
 	g_monitor = FALSE;
 	g_pFactory = NULL;
 	g_buffer = NULL;
+
+	g_kaSignal[0] = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if(NULL == g_kaSignal[0])
+	{
+		return -1;
+	}
 
 	ZeroMemory(g_filepath, MAX_PATH + 1);
 
@@ -172,7 +177,20 @@ static int InitInstance(HINSTANCE hInstance)
 
 static int ExitInstance(HINSTANCE hInstance)
 {
+	int tries = 20;
+	SetEvent(g_kaSignal[0]); /* wakeup the monitoring thread */
+
 	if(NULL != g_buffer) free(g_buffer);
+
+	while(0 != g_threadCount)
+	{
+		Sleep(1000);
+		tries--;
+		if(0 >= tries) break;
+	}
+
+	if(0 == g_threadCount) MessageBox(NULL, _T("All threads are quited!"), _T("MB_OK"), MB_OK);	
+
 	return 0;
 }
 

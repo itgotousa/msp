@@ -16,9 +16,11 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 ![](svg/x0003.svg)
 
 
-遵循的规范
+#### 遵循的规范
 - Markdown采用[Commonmark](https://spec.commonmark.org)
 - SVG目前支持[SVG 1.1](https://www.w3.org/TR/2011/REC-SVG11-20110816/)标准
+- 考虑支持[Tiny VG](https://tinyvg.tech/)，其规范的pdf文档已经上传(tinyvg-specification.pdf)
+
 
 ## 在Windows下的编译方法
 - 安装Visual Studio 2019 社区版，免费的，为微软的良心点赞
