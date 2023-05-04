@@ -50,8 +50,9 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 1. 把文件以二进制的形式读入内存。
 2. 如果头8个字节是89 50 4e 47 0d 0a 1a 0a， 则认为该文件是PNG格式。
 3. 如果除去空格和tab字符，以<svg开头，则认为是svg文件。
-4. 如果扫描最多1204个字节，均为utf8编吗，则认为该文件为markdown的文本文件。
+4. 如果扫描最多1204个字节，均为utf8编码，则认为该文件为markdown的文本文件。
 5. 除了md/svg/png类型的文件外，别的任何文件类型均不支持，以保持最大程度的简约。
+6. 文本文件只支持utf8编码。如果用户的文件是别的编码格式，需要他先转换为utf8以后再用msp进行阅读。
 
 
 
@@ -64,7 +65,7 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 - bottom_margin : Markdown显示区域距离屏幕底端的距离，单位是像素。
 - width : Markdown显示区域的宽度，单位是像素。
 - background_color : Markdown显示区域的背景颜色，缺省为白色
-- screen_color : 非Markdown显示区域的背景颜色。
+- window_color : 非Markdown显示区域的背景颜色。
 - text_font : 正文使用的字体
 - text_color : 正文的颜色
 - h1_font : 一级标题使用的字体
@@ -74,7 +75,8 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 - h5_font : 五级标题使用的字体
 - h6_font : 六级标题使用的字体
 - link_color : 超链的颜色
-- 后面继续设置。
+
+后面继续设置。MSP内置华为免费的[鸿蒙字体](https://developer.harmonyos.com/cn/docs/design/font-0000001157868583)作为缺省字体，这样就不受操作系统环境的影响了。
 
 ### Text渲染引擎
 
