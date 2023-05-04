@@ -4,13 +4,30 @@
 
 #pragma once
 
+#include <d2d1.h>
+#pragma comment(lib, "d2d1.lib")
+
+template <class T> void SafeRelease(T **ppT)
+{
+    if (*ppT)
+    {
+        (*ppT)->Release();
+        *ppT = NULL;
+    }
+}
+
 class CView : public CScrollWindowImpl<CView>
 {
 public:
 	DECLARE_WND_CLASS(NULL)
 
-	CBitmap   m_bmpLogo;
-	SIZE      m_szLogo;
+	ID2D1Factory			*m_pFactory;
+    ID2D1HwndRenderTarget   *m_pRenderTarget;
+    ID2D1SolidColorBrush    *m_pBrush;
+    D2D1_ELLIPSE            m_ellipse;
+
+	CView() : m_pFactory(NULL), m_pRenderTarget(NULL), m_pBrush(NULL)
+	{}
 
 	BOOL PreTranslateMessage(MSG* pMsg)
 	{
@@ -18,43 +35,74 @@ public:
 		return FALSE;
 	}
 
+	void CalculateLayout()
+	{
+		if (NULL != m_pRenderTarget)
+		{
+			D2D1_SIZE_F size = m_pRenderTarget->GetSize();
+			const float x = size.width / 2;
+			const float y = size.height / 2;
+			const float radius = min(x, y);
+			m_ellipse = D2D1::Ellipse(D2D1::Point2F(x, y), radius, radius);
+		}
+	}
+
+	HRESULT CreateGraphicsResources()
+	{
+		HRESULT hr = S_OK;
+		if (NULL == m_pRenderTarget)
+		{
+			RECT rc;
+			GetClientRect(&rc);
+
+			D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+
+			hr = m_pFactory->CreateHwndRenderTarget(
+				D2D1::RenderTargetProperties(),
+				D2D1::HwndRenderTargetProperties(m_hWnd, size),
+				&m_pRenderTarget);
+
+			if (SUCCEEDED(hr))
+			{
+				const D2D1_COLOR_F color = D2D1::ColorF(0, 1.0f, 0);
+				hr = m_pRenderTarget->CreateSolidColorBrush(color, &m_pBrush);
+
+				if (SUCCEEDED(hr))
+				{
+					CalculateLayout();
+				}
+			}
+		}
+		return hr;
+	}
+
 	void DoPaint(CDCHandle dc)
 	{
 		//TODO: Add your drawing code here
-#if 0
-		SIZE sz;
-		RECT rc = { 0 };
-		CDC dcMem, dcTemp;
-		CBitmap bmpMem;
-		CBrush brush;
-		HBITMAP hbmpOld, hbmpTemp;
+		 HRESULT hr = CreateGraphicsResources();
+		 if (SUCCEEDED(hr))
+		 {
+			m_pRenderTarget->BeginDraw();
 
-		GetClientRect(&rc);
-		GetScrollSize(sz);
-		if (sz.cx > rc.right)  rc.right = sz.cx;
-		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
+			m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
+			m_pRenderTarget->FillEllipse(m_ellipse, m_pBrush);
 
-		dcMem.CreateCompatibleDC(dc);
-		bmpMem.CreateCompatibleBitmap(dc, rc.right, rc.bottom);
-		hbmpOld = dcMem.SelectBitmap(bmpMem);
-		brush.CreateSolidBrush(RGB(255, 255, 255));
-		dcMem.FillRect(&rc, brush);
-
-		dcTemp.CreateCompatibleDC(dcMem);
-		hbmpTemp = dcTemp.SelectBitmap(m_bmpLogo);
-		dcMem.BitBlt((rc.right - m_szLogo.cx)>>1, (rc.bottom - m_szLogo.cy)>>1, m_szLogo.cx, m_szLogo.cy, dcTemp, 0, 0, SRCCOPY);
-		dcTemp.SelectBitmap(hbmpTemp);
-
-		dc.BitBlt(0, 0, rc.right, rc.bottom, dcMem, 0, 0, SRCCOPY);
-		dcMem.SelectBitmap(hbmpOld);
-#endif 		
+			hr = m_pRenderTarget->EndDraw();
+			if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+			{
+				SafeRelease(&m_pRenderTarget);
+				SafeRelease(&m_pBrush);
+			}			
+		 }
 	}
 
 	BEGIN_MSG_MAP(CView)
 		CHAIN_MSG_MAP(CScrollWindowImpl<CView>)
 		MESSAGE_HANDLER(WM_LBUTTONDOWN, OnLBtnDown)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)		
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 	END_MSG_MAP()
 
 // Handler prototypes (uncomment arguments if needed):
@@ -64,8 +112,17 @@ public:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
-		//m_bmpLogo.LoadBitmap(IDR_BMP_LOGO);
-		//m_bmpLogo.GetSize(m_szLogo);
+
+		HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pFactory);
+		if(FAILED(hr)) return -1;
+
+		return 0;
+	}
+
+	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
+	{
+		SafeRelease(&m_pRenderTarget);
+		SafeRelease(&m_pBrush);
 
 		return 0;
 	}
@@ -88,6 +145,22 @@ public:
 	LRESULT OnLBtnDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled)
 	{
         ::PostMessage(GetTopLevelParent(), WM_NCLBUTTONDOWN, HTCAPTION, lParam);
+		return 0;
+	}
+
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+	{
+		if (NULL != m_pRenderTarget)
+		{
+			RECT rc;
+			GetClientRect(&rc);
+
+			D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
+
+			m_pRenderTarget->Resize(size);
+			CalculateLayout();
+			InvalidateRect(&rc);
+		}		
 		return 0;
 	}
 

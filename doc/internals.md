@@ -72,7 +72,10 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 
 ### SVG渲染引擎
 
+https://github.com/adobe/svg-native-viewer
+
 cmake -Bbuild/win64 -H. -G "Visual Studio 16 2019" -DGDIPLUS=ON -DD2D=ON
+
 
 
 SVGDocument
