@@ -5,6 +5,8 @@
 #define UNICODE
 #endif 
 
+#define NOMINMAX
+
 #include "stdafx.h"
 
 #include <atlframe.h>
@@ -12,13 +14,15 @@
 #include <atldlgs.h>
 #include <atlctrlw.h>
 #include <atlscrl.h>
-
+#include <memory>
 #include "resource.h"
 #include "mspwin.h"
 
 #include "View.h"
 #include "aboutdlg.h"
 #include "MainFrm.h"
+#include "D2DSvg.hpp"
+//#include "pgcore.h"
 
 LONG	g_threadCount = 0;
 BOOL 	g_fileloaded = FALSE;
@@ -209,6 +213,8 @@ static int InitInstance(HINSTANCE hInstance)
 	hr = pSink->Close();
 	pSink->Release();
 
+	//MemoryContextInit();
+	//MessageBox(NULL, _T("MemoryContextInit!"), _T("MB_OK"), MB_OK);
 	return 0;
 }
 
@@ -233,7 +239,6 @@ static int ExitInstance(HINSTANCE hInstance)
 
 	return 0;
 }
-
 
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lpstrCmdLine, int nCmdShow)
 {

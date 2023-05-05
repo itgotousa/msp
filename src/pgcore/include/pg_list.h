@@ -1,8 +1,8 @@
 #ifndef __PG_LIST_H__
 #define __PG_LIST_H__
 
-#include "include/c.h"
-#include "include/nodes.h"
+#include "c.h"
+#include "nodes.h"
 
 typedef union ListCell
 {

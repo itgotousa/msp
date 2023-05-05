@@ -136,6 +136,8 @@ public:
     ID2D1SolidColorBrush    *m_pBrush;
     D2D1_ELLIPSE            m_ellipse;
 
+	CComPtr<ID2D1PathGeometry> GetGraphicsPath() {}
+
 	CView() : m_pFactory(NULL), m_pRenderTarget(NULL), m_pBrush(NULL)
 	{}
 
@@ -152,7 +154,7 @@ public:
 			D2D1_SIZE_F size = m_pRenderTarget->GetSize();
 			const float x = size.width / 2;
 			const float y = size.height / 2;
-			const float radius = min(x/2, y/2);
+			const float radius = std::min(x/2, y/2);
 			m_ellipse = D2D1::Ellipse(D2D1::Point2F(x, y), radius, radius);
 		}
 	}

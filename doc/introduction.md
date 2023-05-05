@@ -23,11 +23,11 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 
 
 ## 在Windows下的编译方法
-- 安装Visual Studio 2019 社区版，免费的，为微软的良心点赞。建议使用VS2019，因为最新版的CMake只支持到了VS2019。
+- 安装Visual Studio 2022 社区版，免费的，为微软的良心点赞。
 - 安装最新版的[CMake](https://cmake.org)，就是一个.exe文件，鼠标双击即可。
 - git clone https://github.com/itgotousa/msp.git 或下载本项目的zip包
 - 假设本项目的目录在D:\github\msp目录下，在其中建立一个build目录.
-- 打开Visual Studio 2019的X64 Native Tools Command Prompt for VS 2019窗口，切换到D:\github\msp\build目录。
+- 打开Visual Studio 2022的X64 Native Tools Command Prompt for VS 2022窗口，切换到D:\github\msp\build目录。
 - 执行： cmake -G "NMake Makefiles" ../src
 - 执行： nmake 或nmake VERBOSE=1
 - 编译好的可执行文件是：D:\github\msp\build\arch\windows\msp-win64.exe
