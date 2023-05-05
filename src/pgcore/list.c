@@ -1,5 +1,5 @@
 
-#include "include/msp.h"
+#include "include/pgcore.h"
 
 /*
  * The previous List implementation, since it used a separate palloc chunk
@@ -68,7 +68,7 @@ new_list(NodeTag type, int min_size)
 	List	   *newlist;
 	int			max_size;
 
-`	Assert(min_size > 0);
+	Assert(min_size > 0);
 
 	/*
 	 * We allocate all the requested cells, and possibly some more, as part of

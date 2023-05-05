@@ -22,7 +22,7 @@
  *-------------------------------------------------------------------------
  */
 
-#include "include/msp.h"
+#include "include/pgcore.h"
 
 /*
  * This hash function was written by Bob Jenkins

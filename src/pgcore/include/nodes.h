@@ -1,8 +1,6 @@
 #ifndef __NODES_H__
 #define __NODES_H__
 
-#include "include/msp.h"
-
 /*
  * The first field of every node is NodeTag. Each node created (with makeNode)
  * will have one of the following tags as the value of its first field.

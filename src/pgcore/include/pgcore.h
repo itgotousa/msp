@@ -1,9 +1,10 @@
-#ifndef __MSP_H__
-#define __MSP_H__
+#ifndef __PGCORE_H__
+#define __PGCORE_H__
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
 #include <stdlib.h>
 #include <memory.h>
 #include <intrin.h>
@@ -36,4 +37,4 @@ extern "C" {
 }
 #endif
 
-#endif  /* __MSP_H__ */
+#endif  /* __PGCORE_H__ */

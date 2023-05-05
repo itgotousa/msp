@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 project(msp)
 
+add_subdirectory(pgcore)
 add_subdirectory(arch/windows)
 
 # set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")

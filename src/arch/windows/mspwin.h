@@ -13,6 +13,7 @@ extern HANDLE  g_kaSignal[2];
 extern LONG    g_threadCount;
 
 extern  ID2D1Factory  *g_pFactory;
+extern  ID2D1PathGeometry *g_path;
 
 #endif /* __MSPWIN_H__ */
 

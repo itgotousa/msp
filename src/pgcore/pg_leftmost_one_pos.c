@@ -1,4 +1,4 @@
-#include "include/msp.h"
+#include "include/pgcore.h"
 
 /*
  * Array giving the position of the left-most set bit for each possible

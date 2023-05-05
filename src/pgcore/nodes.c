@@ -1,5 +1,5 @@
 
-#include "include/nodes.h"
+#include "include/pgcore.h"
 
 /*
  * Support for newNode() macro

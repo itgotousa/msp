@@ -28,8 +28,10 @@
 #define PGWARNING	19			/* Must equal WARNING; see NOTE below. */
 #define WARNING_CLIENT_ONLY	20	/* Warnings to be sent to client as usual, but
 								 * never to the server log. */
+#ifndef ERROR
 #define ERROR		21			/* user error - abort transaction; return to
 								 * known state */
+#endif 
 #define PGERROR		21			/* Must equal ERROR; see NOTE below. */
 #define FATAL		22			/* fatal error - abort process */
 #define PANIC		23			/* take down the other backends with me */

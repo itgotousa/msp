@@ -1,4 +1,4 @@
-#include "include/msp.h"
+#include "include/pgcore.h"
 
 #define WORDNUM(x)	((x) / BITS_PER_BITMAPWORD)
 #define BITNUM(x)	((x) % BITS_PER_BITMAPWORD)

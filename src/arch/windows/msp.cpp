@@ -28,6 +28,7 @@ HANDLE  g_kaSignal[2] = {NULL, NULL};
 TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
 
 ID2D1Factory    *g_pFactory = NULL;
+ID2D1PathGeometry *g_path = NULL;
 
 CAppModule _Module;
 
@@ -171,6 +172,42 @@ static int InitInstance(HINSTANCE hInstance)
 
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &g_pFactory);
 	if(FAILED(hr)) return -1;
+	hr = g_pFactory->CreatePathGeometry(&g_path);
+	if(FAILED(hr)) return -1;
+
+	ID2D1GeometrySink *pSink = NULL;	
+
+	hr = g_path->Open(&pSink);
+	if(FAILED(hr)) return -1;
+	if(NULL == pSink) return -1;
+
+	pSink->BeginFigure(
+		D2D1::Point2F(0, 0),
+		D2D1_FIGURE_BEGIN_FILLED
+		);
+
+	pSink->AddLine(D2D1::Point2F(200, 0));
+
+	pSink->AddBezier(
+		D2D1::BezierSegment(
+			D2D1::Point2F(150, 50),
+			D2D1::Point2F(150, 150),
+			D2D1::Point2F(200, 200))
+		);
+
+	pSink->AddLine(D2D1::Point2F(0, 200));
+
+	pSink->AddBezier(
+		D2D1::BezierSegment(
+			D2D1::Point2F(50, 150),
+			D2D1::Point2F(50, 50),
+			D2D1::Point2F(0, 0))
+		);
+
+	pSink->EndFigure(D2D1_FIGURE_END_CLOSED);
+
+	hr = pSink->Close();
+	pSink->Release();
 
 	return 0;
 }
@@ -182,6 +219,9 @@ static int ExitInstance(HINSTANCE hInstance)
 
 	if(NULL != g_buffer) free(g_buffer);
 
+	if(NULL != g_pFactory) g_pFactory->Release();
+	if(NULL != g_path) g_path->Release();
+
 	while(0 != g_threadCount)
 	{
 		Sleep(1000);
@@ -189,7 +229,7 @@ static int ExitInstance(HINSTANCE hInstance)
 		if(0 >= tries) break;
 	}
 
-	if(0 == g_threadCount) MessageBox(NULL, _T("All threads are quited!"), _T("MB_OK"), MB_OK);	
+	//if(0 == g_threadCount) MessageBox(NULL, _T("All threads are quited!"), _T("MB_OK"), MB_OK);	
 
 	return 0;
 }

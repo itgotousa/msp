@@ -25,6 +25,7 @@ typedef enum
 
 unsigned WINAPI _monitor_msp_thread(LPVOID lpData)
 {
+#if 0	
 	DWORD dwRet;
 	HWND hWndUI = (HWND)lpData;
 	ATLASSERT(::IsWindow(hWndUI));
@@ -49,7 +50,7 @@ unsigned WINAPI _monitor_msp_thread(LPVOID lpData)
 	InterlockedDecrement(&g_threadCount);
 
 	MessageBox(NULL, _T("Monitoring thead is quiting!"), _T("MB_OK"), MB_OK);
-
+#endif 
 	return 0;
 }
 
@@ -63,6 +64,7 @@ unsigned WINAPI open_msp_thread(LPVOID lpData)
 	HWND hWndUI = (HWND)lpData;
 	ATLASSERT(::IsWindow(hWndUI));
 
+#if 0
 	if (0 != _tsopen_s(&fd, g_filepath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
 	{
 		return 0;
@@ -111,7 +113,7 @@ unsigned WINAPI open_msp_thread(LPVOID lpData)
 	}
 
 	PostMessage(hWndUI, WM_UI_NOTIFY, UI_NOTIFY_FILEOPN, ft);
-
+#endif 
 	return 0;
 }
 
@@ -174,7 +176,7 @@ public:
 
 			if (SUCCEEDED(hr))
 			{
-				const D2D1_COLOR_F color = D2D1::ColorF(0, 1.0f, 0);
+				const D2D1_COLOR_F color = D2D1::ColorF(0, 0, 0);
 				hr = m_pRenderTarget->CreateSolidColorBrush(color, &m_pBrush);
 
 				if (SUCCEEDED(hr))
@@ -195,7 +197,8 @@ public:
 			m_pRenderTarget->BeginDraw();
 
 			m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
-			m_pRenderTarget->FillEllipse(m_ellipse, m_pBrush);
+			//m_pRenderTarget->FillEllipse(m_ellipse, m_pBrush);
+			 m_pRenderTarget->DrawGeometry(g_path, m_pBrush, 1.f);
 
 			hr = m_pRenderTarget->EndDraw();
 			if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
