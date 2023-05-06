@@ -35,9 +35,12 @@ extern CAppModule _Module;
 #include <sys/stat.h>
 
 #include <d2d1.h>
+#include <d2d1helper.h>
+#include <dwrite.h>
+#include <wincodec.h>
 #pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "dwrite.lib")
 #include <Wincodec.h> // Windows Imaging Component (WIC)
-//#include <stack>
 
 
 #if defined _M_IX86

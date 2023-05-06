@@ -1,6 +1,7 @@
 #ifndef __SVG_HPP__
 #define __SVG_HPP__
 
+#if 0
 #include <array>
 //#include <boost/variant.hpp>
 #include <limits>
@@ -362,5 +363,6 @@ private:
     std::weak_ptr<SVGRenderer> mRenderer{};
 };
 
+#endif 
 
 #endif /* __SVG_HPP__ */

@@ -117,29 +117,16 @@ unsigned WINAPI open_msp_thread(LPVOID lpData)
 	return 0;
 }
 
-template <class T> void SafeRelease(T **ppT)
-{
-    if (*ppT)
-    {
-        (*ppT)->Release();
-        *ppT = NULL;
-    }
-}
-
 class CView : public CScrollWindowImpl<CView>
 {
 public:
 	DECLARE_WND_CLASS(NULL)
 
-	ID2D1Factory			*m_pFactory;
-    ID2D1HwndRenderTarget   *m_pRenderTarget;
-    ID2D1SolidColorBrush    *m_pBrush;
-    D2D1_ELLIPSE            m_ellipse;
+    ID2D1HwndRenderTarget*	m_pRenderTarget;
 
 	CComPtr<ID2D1PathGeometry> GetGraphicsPath() {}
 
-	CView() : m_pFactory(NULL), m_pRenderTarget(NULL), m_pBrush(NULL)
-	{}
+	CView() : m_pRenderTarget(NULL) {}
 
 	BOOL PreTranslateMessage(MSG* pMsg)
 	{
@@ -149,6 +136,7 @@ public:
 
 	void CalculateLayout()
 	{
+#if 0		
 		if (NULL != m_pRenderTarget)
 		{
 			D2D1_SIZE_F size = m_pRenderTarget->GetSize();
@@ -157,12 +145,11 @@ public:
 			const float radius = std::min(x/2, y/2);
 			m_ellipse = D2D1::Ellipse(D2D1::Point2F(x, y), radius, radius);
 		}
+#endif 		
 	}
 
 	HRESULT CreateGraphicsResources()
 	{
-		if(NULL == g_pFactory) return S_FALSE;
-
 		HRESULT hr = S_OK;
 		if (NULL == m_pRenderTarget)
 		{
@@ -171,11 +158,11 @@ public:
 
 			D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
 
-			hr = g_pFactory->CreateHwndRenderTarget(
+			hr = (d2d.pFactory)->CreateHwndRenderTarget(
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties(m_hWnd, size),
 				&m_pRenderTarget);
-
+#if 0
 			if (SUCCEEDED(hr))
 			{
 				const D2D1_COLOR_F color = D2D1::ColorF(0, 0, 0);
@@ -186,29 +173,49 @@ public:
 					CalculateLayout();
 				}
 			}
+#endif 			
 		}
 		return hr;
 	}
 
 	void DoPaint(CDCHandle dc)
 	{
-		//TODO: Add your drawing code here
-		 HRESULT hr = CreateGraphicsResources();
-		 if (SUCCEEDED(hr))
-		 {
-			m_pRenderTarget->BeginDraw();
-
-			m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
-			//m_pRenderTarget->FillEllipse(m_ellipse, m_pBrush);
-			 m_pRenderTarget->DrawGeometry(g_path, m_pBrush, 1.f);
-
-			hr = m_pRenderTarget->EndDraw();
-			if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		if(NULL != g_renderdata)
+		{
+			HRESULT hr = CreateGraphicsResources();
+			if (SUCCEEDED(hr))
 			{
-				SafeRelease(&m_pRenderTarget);
-				SafeRelease(&m_pBrush);
-			}			
-		 }
+				unsigned int so_type;
+				RenderNode	n = g_renderdata;
+				
+				m_pRenderTarget->BeginDraw();
+				m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+				m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
+				while(NULL != n)
+				{
+					so_type = (0x03 & n->flag);
+					switch(so_type)
+					{
+						case SO_TYPE_GRAPHIC	:	DrawSVGGraphic(m_pRenderTarget, n);
+													break;
+						case SO_TYPE_TEXT		:	DrawSVGText(m_pRenderTarget, n);
+													break;
+						case SO_TYPE_IMAGE		:	DrawSVGImage(m_pRenderTarget, n);
+													break;
+						default					:	break;
+					}
+					n = n->next;
+				}
+
+				hr = m_pRenderTarget->EndDraw();
+				
+				if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+				{
+					m_pRenderTarget->Release();
+					m_pRenderTarget = NULL;
+				}			
+			}
+		}
 	}
 
 	BEGIN_MSG_MAP(CView)
@@ -228,15 +235,28 @@ public:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
+
+		g_renderdata = (RenderNode)palloc(sizeof(RenderNodeData));
+		RenderNode n = g_renderdata;
+		if(NULL != n)
+		{
+			n->flag = SO_TYPE_TEXT;
+			n->next = NULL;
+			//n->ctx  = TopMemoryContext;
+			n->x	= 100;
+			n->y	= 100;
+			n->data	= _T("Hello, Direct2D!");
+			n->len  = wcsnlen_s((const wchar_t*)n->data, 100);
+		}
+		
 		HRESULT hr = CreateGraphicsResources();
 		return hr;
 	}
 
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
 	{
-		SafeRelease(&m_pRenderTarget);
-		SafeRelease(&m_pBrush);
-		SafeRelease(&g_pFactory);
+		m_pRenderTarget->Release();
+		m_pRenderTarget = NULL;
 		return 0;
 	}
 
@@ -250,7 +270,7 @@ public:
 			ZeroMemory(g_filepath, MAX_PATH + 1);
 			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH + 1);
 			g_fileloaded = TRUE;
-			_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
+			//_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
 
 			::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 		}
@@ -286,7 +306,7 @@ public:
 		wmemcpy((wchar_t*)g_filepath, lpszURL, MAX_PATH + 1);
 		g_fileloaded = TRUE;
 
-		_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
+		//_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
 		// _beginthreadex(NULL, 0, open_msp_thread, m_hWnd, 0, NULL);
 		return 0;
 	}
@@ -312,5 +332,27 @@ public:
 #endif 
 		return 0;
 	}
+
+	static void DrawSVGGraphic(ID2D1HwndRenderTarget* target, RenderNode n)
+	{}
+	static void DrawSVGText(ID2D1HwndRenderTarget* target, RenderNode n)
+	{
+		HRESULT hr = S_OK;
+		ID2D1SolidColorBrush* brush = NULL;
+
+		hr = target->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+
+		if (!SUCCEEDED(hr)) return;
+
+		D2D1_RECT_F layoutRect = D2D1::RectF(n->x, n->y, 400, 200);
+
+		target->DrawText((const WCHAR *)n->data, n->len, d2d.pTextFormat, layoutRect, brush);
+
+		brush->Release();
+		brush = NULL;
+
+	}
+	static void DrawSVGImage(ID2D1HwndRenderTarget* target, RenderNode n)
+	{}
 
 };

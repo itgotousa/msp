@@ -15,14 +15,15 @@
 #include <atlctrlw.h>
 #include <atlscrl.h>
 #include <memory>
+
+#include "svg.h"
+
 #include "resource.h"
 #include "mspwin.h"
-
 #include "View.h"
 #include "aboutdlg.h"
 #include "MainFrm.h"
-#include "D2DSvg.hpp"
-//#include "pgcore.h"
+//#include "D2DSvg.hpp"
 
 LONG	g_threadCount = 0;
 BOOL 	g_fileloaded = FALSE;
@@ -31,8 +32,8 @@ char   *g_buffer = NULL;
 HANDLE  g_kaSignal[2] = {NULL, NULL};
 TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
 
-ID2D1Factory    *g_pFactory = NULL;
-ID2D1PathGeometry *g_path = NULL;
+D2DContextData 	d2d = {0};
+RenderNode		g_renderdata = NULL;
 
 CAppModule _Module;
 
@@ -61,7 +62,7 @@ public:
 		// Get the size of screen to the variable desktop
 		::GetWindowRect(hDesktop, &desktop);
 		rc.top = rc.left = 0;
-		rc.right = desktop.right >> 2;
+		rc.right = desktop.right >> 1;
 		rc.bottom = desktop.bottom - 200;
 		if(wndFrame.CreateEx(NULL, rc) == NULL)
 		{
@@ -163,8 +164,28 @@ static int InitInstance(HINSTANCE hInstance)
 	g_threadCount = 0;
 	g_fileloaded = FALSE;
 	g_monitor = FALSE;
-	g_pFactory = NULL;
+	d2d.pFactory = NULL;
 	g_buffer = NULL;
+	g_renderdata = NULL;
+
+	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
+	if(FAILED(hr)) return -1;
+	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&(d2d.pDWriteFactory)));
+	if(FAILED(hr)) return -1;
+	hr = d2d.pDWriteFactory->CreateTextFormat(
+            L"Gabriola",                // Font family name.
+            NULL,                       // Font collection (NULL sets it to use the system font collection).
+            DWRITE_FONT_WEIGHT_REGULAR,
+            DWRITE_FONT_STYLE_NORMAL,
+            DWRITE_FONT_STRETCH_NORMAL,
+            25.0f,
+            L"en-us",
+            &(d2d.pTextFormat)
+			);
+	if(FAILED(hr)) return -1;
+
+	hr = d2d.pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+	if (SUCCEEDED(hr)) d2d.pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
 	g_kaSignal[0] = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if(NULL == g_kaSignal[0])
@@ -174,8 +195,7 @@ static int InitInstance(HINSTANCE hInstance)
 
 	ZeroMemory(g_filepath, MAX_PATH + 1);
 
-	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &g_pFactory);
-	if(FAILED(hr)) return -1;
+#if 0	
 	hr = g_pFactory->CreatePathGeometry(&g_path);
 	if(FAILED(hr)) return -1;
 
@@ -212,8 +232,8 @@ static int InitInstance(HINSTANCE hInstance)
 
 	hr = pSink->Close();
 	pSink->Release();
-
-	//MemoryContextInit();
+#endif 
+	MemoryContextInit();
 	//MessageBox(NULL, _T("MemoryContextInit!"), _T("MB_OK"), MB_OK);
 	return 0;
 }
@@ -225,8 +245,20 @@ static int ExitInstance(HINSTANCE hInstance)
 
 	if(NULL != g_buffer) free(g_buffer);
 
-	if(NULL != g_pFactory) g_pFactory->Release();
-	if(NULL != g_path) g_path->Release();
+	if(NULL != d2d.pFactory) {
+		(d2d.pFactory)->Release();
+		(d2d.pFactory) = NULL;
+	}
+
+	if(NULL != d2d.pDWriteFactory) {
+		(d2d.pDWriteFactory)->Release();
+		(d2d.pDWriteFactory) = NULL;
+	}
+
+	if(NULL != d2d.pTextFormat) {
+		(d2d.pTextFormat)->Release();
+		(d2d.pTextFormat) = NULL;
+	}
 
 	while(0 != g_threadCount)
 	{

@@ -1,5 +1,7 @@
 #ifndef __D2DSVG_HPP__
 #define __D2DSVG_HPP__
+
+#if 0
 #include "stdafx.h"
 #include <stack>
 #include <memory>
@@ -541,5 +543,5 @@ private:
     std::stack<D2D1_MATRIX_3X2_F> mContextTransform;
 };
 
-//#endif 
+#endif 
 #endif /* __D2DSVG_HPP__ */
