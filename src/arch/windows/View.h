@@ -243,9 +243,9 @@ public:
 			n->flag = SO_TYPE_TEXT;
 			n->next = NULL;
 			//n->ctx  = TopMemoryContext;
-			n->x	= 100;
-			n->y	= 100;
-			n->data	= _T("Hello, Direct2D!");
+			n->x	= -10;
+			n->y	= 400;
+			n->data	= _T("Hello, Huawei!");
 			n->len  = wcsnlen_s((const wchar_t*)n->data, 100);
 		}
 		
