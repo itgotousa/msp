@@ -244,8 +244,8 @@ public:
 			n->next = NULL;
 			//n->ctx  = TopMemoryContext;
 			n->x	= -10;
-			n->y	= 400;
-			n->data	= _T("Hello, Huawei!");
+			n->y	= 10;
+			n->data	= _T("Bitcoion!!!");
 			n->len  = wcsnlen_s((const wchar_t*)n->data, 100);
 		}
 		

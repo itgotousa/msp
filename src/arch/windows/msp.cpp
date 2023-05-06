@@ -173,7 +173,7 @@ static int InitInstance(HINSTANCE hInstance)
 	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&(d2d.pDWriteFactory)));
 	if(FAILED(hr)) return -1;
 	hr = d2d.pDWriteFactory->CreateTextFormat(
-            L"Gabriola",                // Font family name.
+            L"Courier New",                // Font family name.
             NULL,                       // Font collection (NULL sets it to use the system font collection).
             DWRITE_FONT_WEIGHT_REGULAR,
             DWRITE_FONT_STYLE_NORMAL,
