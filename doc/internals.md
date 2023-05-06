@@ -54,6 +54,22 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 5. 除了md/svg/png类型的文件外，别的任何文件类型均不支持，以保持最大程度的简约。
 6. 文本文件只支持utf8编码。如果用户的文件是别的编码格式，需要他先转换为utf8以后再用msp进行阅读。
 
+### 渲染引擎的优化
+我们以Windows下的Direct2D为例，讲解设计思想：
+
+当用户通过拖拽或者菜单的方式打开一个svg文件，MSP就会启动一个后台线程，这个线程的任务如下：
+- 把svg文件一股脑读入到内存的一个buffer里面。
+- 使用flex和bison对其进行解析，产生一个语法树(parse tree)。
+- 对语法树进行语义分析，产生渲染树(render tree)。
+- 通知前台的UI线程进行渲染。
+
+因为前台的渲染速度直接影响到用户的体验，所以我们要把一切不该渲染引擎做的工作统统都交给后台线程进行完成。根据SVG的规范，SVG只支持三种对象：矢量的图形(graphic)，点阵的图像(image)和文本(text)，渲染树就是一个单向链表。
+```
+SVG allows for three types of graphic objects: vector graphic shapes (e.g., paths consisting of straight lines and curves), images and text.
+```
+
+![](svg/x5003.svg)
+
 
 
 ### 控制显示的参数(Theme)
