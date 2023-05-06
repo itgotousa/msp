@@ -64,12 +64,12 @@ MSP的源代码把平台无关的部分和平台相关部分分开。
 - 通知前台的UI线程进行渲染。
 
 因为前台的渲染速度直接影响到用户的体验，所以我们要把一切不该渲染引擎做的工作统统都交给后台线程进行完成。根据SVG的规范，SVG只支持三种对象：矢量的图形(graphic)，点阵的图像(image)和文本(text)，渲染树就是一个单向链表。
-```
+
 SVG allows for three types of graphic objects: vector graphic shapes (e.g., paths consisting of straight lines and curves), images and text.
-```
 
 ![](svg/x5003.svg)
 
+这个单向链表的头四个字节中的最高位的2个比特表示渲染对象的类型：0表示无效，1表示graphic，2表示文本，3表示图像。渲染引擎只要从头开始扫描该单向链表，因此执行相应的画图动作即可。画图动作所需要的所有准备工作都已经在后台线程里计算完毕了，包括嵌套的矩阵变化等。这样简单的渲染引擎有着最高的渲染效率。
 
 
 ### 控制显示的参数(Theme)
