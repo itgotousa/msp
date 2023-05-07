@@ -198,7 +198,7 @@ public:
 		if (DragQueryFile((HDROP)wParam, 0, path, MAX_PATH)) {
 
 			ZeroMemory(g_filepath, MAX_PATH + 1);
-			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH + 1);
+			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH);
 			
 			_beginthreadex(NULL, 0, open_mspfile_thread, m_hWnd, 0, NULL);
 		}
@@ -231,10 +231,10 @@ public:
 	int OpenMSPFile(LPCTSTR lpszURL)
 	{
 		ZeroMemory(g_filepath, MAX_PATH + 1);
-		wmemcpy((wchar_t*)g_filepath, lpszURL, MAX_PATH + 1);
-		g_fileloaded = TRUE;
+		wmemcpy((wchar_t*)g_filepath, lpszURL, MAX_PATH);
 
-		//_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
+		_beginthreadex(NULL, 0, open_mspfile_thread, m_hWnd, 0, NULL);
+		
 		return 0;
 	}
 
@@ -249,7 +249,6 @@ public:
 				case filePNG	:
 				case fileJPG	:
 				case fileGIF	:				
-					g_fileloaded = TRUE;
 					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
 					InvalidateRect(NULL);
 					UpdateWindow();

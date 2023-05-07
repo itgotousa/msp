@@ -144,12 +144,16 @@ public:
 
 	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
-		if(TRUE == g_fileloaded) 
+		if(NULL != d2d.pData) 
 		{
 			CToolBarCtrl toolbar = m_hWndTB;
 			toolbar.EnableButton(IDM_MONITOR, TRUE);
 			toolbar.CheckButton(IDM_MONITOR, TRUE);
 			SetWindowText(g_filepath);
+		}
+		else
+		{
+			SetWindowText(_T("A tiny Markdown/SVG/PNG Viewer"));
 		}
 		return 0;
 	}
@@ -184,7 +188,7 @@ public:
 		//
 		ofn.lpstrFile[0] = _T('\0');
 		ofn.nMaxFile = MAX_PATH; //sizeof(path) / sizeof(TCHAR);
-		ofn.lpstrFilter = _T("markdown file(*.md)\0*.md\0all files(*.*)\0*.*\0\0");
+		ofn.lpstrFilter = _T("Markdown file(*.md)\0*.md\0SVG file(*.svg)\0*.svg\0PNG file(*.png)\0*.png\0All files(*.*)\0*.*\0\0");
 		ofn.nFilterIndex = 1;
 		ofn.lpstrFileTitle = NULL;
 		ofn.nMaxFileTitle = 0;

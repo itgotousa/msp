@@ -51,7 +51,6 @@ typedef struct D2DContextData
 
 
 extern TCHAR   g_filepath[MAX_PATH + 1];
-extern BOOL    g_fileloaded;
 extern BOOL    g_monitor;
 extern HANDLE  g_kaSignal[2];
 extern LONG    g_threadCount;
