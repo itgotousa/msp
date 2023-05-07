@@ -15,10 +15,11 @@ typedef struct RenderNodeData *RenderNode;
 
 typedef struct RenderNodeData
 {
-    unsigned int    flag;
+    uint32_t        flag;
     RenderNode      next;
+    uint8_t         type;
     void*           data;
-    unsigned int    len;
+    uint32_t        len;
     float           x, y;
     float           a,b,c,d,e,f;
 } RenderNodeData;

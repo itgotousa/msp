@@ -11,10 +11,26 @@ class CView : public CScrollWindowImpl<CView>
 public:
 	DECLARE_WND_CLASS(NULL)
 
-    ID2D1HwndRenderTarget*	m_pRenderTarget;
-	ID2D1Bitmap*			m_pBitmap;
+	BOOL	m_InitSize;
+	UINT32	m_width;
+	UINT32	m_height;
 
-	CView() : m_pRenderTarget(NULL), m_pBitmap(NULL) {}
+    ID2D1HwndRenderTarget*	m_pRenderTarget;
+
+	CView() : m_pRenderTarget(NULL)
+	{
+		m_InitSize = FALSE;
+		m_width = m_height = 0;
+	}
+
+	~CView()
+	{
+		if(NULL!= m_pRenderTarget)
+		{
+			m_pRenderTarget->Release();
+			m_pRenderTarget = NULL;
+		}
+	}
 
 	BOOL PreTranslateMessage(MSG* pMsg)
 	{
@@ -54,11 +70,6 @@ public:
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties(m_hWnd, size),
 				&m_pRenderTarget);
-			if(NULL != m_pBitmap) 
-			{
-				m_pBitmap->Release();
-				m_pBitmap = NULL;
-			}
 		}
 		return hr;
 	}
@@ -110,18 +121,13 @@ public:
 			switch(so_type)
 			{
 				case SO_TYPE_GRAPHIC	:	
-						DrawSVGGraphic(m_pRenderTarget, n);
+						DrawSVGGraphic(n);
 						break;
 				case SO_TYPE_TEXT		:	
-						DrawSVGText(m_pRenderTarget, n);
+						DrawSVGText(n);
 						break;
 				case SO_TYPE_IMAGE		:
-						if(NULL != m_pBitmap)
-						{
-							m_pBitmap->Release();
-							m_pBitmap = NULL;
-						}
-						DrawSVGImage(m_pRenderTarget, n, &m_pBitmap);
+						DrawSVGImage(n);
 						break;
 				default					:	
 						break;
@@ -158,7 +164,6 @@ public:
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
 		m_pRenderTarget = NULL;
-		m_pBitmap = NULL;
 #if 0		
 		d2d.pData = (RenderNode)palloc(sizeof(RenderNodeData));
 		RenderNode n = d2d.pData;
@@ -178,11 +183,6 @@ public:
 
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
 	{
-		if(NULL!= m_pBitmap)
-		{
-			m_pBitmap->Release();
-			m_pBitmap = NULL;
-		}
 		if(NULL!= m_pRenderTarget)
 		{
 			m_pRenderTarget->Release();
@@ -197,14 +197,10 @@ public:
 
 		if (DragQueryFile((HDROP)wParam, 0, path, MAX_PATH)) {
 
-			//MessageBox(path, _T("MB_OK"), MB_OK);
 			ZeroMemory(g_filepath, MAX_PATH + 1);
 			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH + 1);
-			g_fileloaded = TRUE;
 			
 			_beginthreadex(NULL, 0, open_mspfile_thread, m_hWnd, 0, NULL);
-
-			::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 		}
 
 		return 0;
@@ -250,12 +246,16 @@ public:
 
 			switch(ft)
 			{
-				case filePNG:
-					//MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);
+				case filePNG	:
+				case fileJPG	:
+				case fileGIF	:				
+					g_fileloaded = TRUE;
+					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
 					InvalidateRect(NULL);
 					UpdateWindow();
 					break;
 				default:
+					//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 					return 0;
 			}
 		}
@@ -263,10 +263,10 @@ public:
 		return 0;
 	}
 
-	static void DrawSVGGraphic(ID2D1HwndRenderTarget* target, D2DRenderNode n)
+	void DrawSVGGraphic(D2DRenderNode n)
 	{}
 	
-	static void DrawSVGText(ID2D1HwndRenderTarget* target, D2DRenderNode n)
+	void DrawSVGText(D2DRenderNode n)
 	{
 #if 0		
 		HRESULT hr = S_OK;
@@ -285,10 +285,34 @@ public:
 #endif 
 	}
 
-	static void DrawSVGImage(ID2D1HwndRenderTarget* target, D2DRenderNode n, ID2D1Bitmap** ppBitmap)
+	void DrawSVGImage(D2DRenderNode n)
 	{
-		target->CreateBitmapFromWicBitmap(n->pConverter, nullptr, ppBitmap);
-		target->DrawBitmap(*ppBitmap);
+		if(NULL != n->pConverter)
+		{
+			ID2D1Bitmap*	b = NULL;
+			m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &b);
+			if(NULL != b) 
+			{
+				POINT pt;
+				if(!m_InitSize)
+				{
+					D2D1_SIZE_U s = b->GetPixelSize();
+					m_width 	= s.width;
+					m_height 	= s.height;
+					m_InitSize	= TRUE;
+					SetScrollSize(m_width, m_height);
+				}
+				GetScrollOffset(pt);
+				D2D1_RECT_F srcRect = D2D1::RectF(
+					static_cast<float>(-pt.x),
+					static_cast<float>(-pt.y),
+					static_cast<float>(m_width - pt.x),
+					static_cast<float>(m_height - pt.y));				
+				m_pRenderTarget->DrawBitmap(b, &srcRect);
+				b->Release();
+				b = NULL;
+			}
+		}
 	}
 
 };

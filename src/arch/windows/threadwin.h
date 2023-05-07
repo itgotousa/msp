@@ -4,10 +4,6 @@
 #include "pgcore.h"
 #include "svg.h"
 
-//static MemoryContext CurrRenderCxt = NULL;
-//static MemoryContext NewRenderCxt  = NULL;
-static unsigned char* file_buffer  = NULL;
-
 static void ReleaseD2DResource(D2DRenderNode n)
 {
     while(NULL != n)
@@ -86,11 +82,21 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         {
             ft = filePNG;
         }
+        if((0xff == p[0]) && (0xd8 == p[1]))
+        {
+            ft = fileJPG;
+        }
+        if((0x47 == p[0]) && (0x49 == p[1]) && (0x46 == p[2]) && (0x38 == p[3]) && 
+           (0x39 == p[4]) && (0x61 == p[5]))
+        {
+            ft = fileGIF;
+        }
+
     }
 
 	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
-    if(filePNG == ft) 
+    if(filePNG == ft || fileJPG == ft || fileGIF == ft) 
     {
         mcxt = AllocSetContextCreate(TopMemoryContext,
                                     "renderCxt",
@@ -121,6 +127,16 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             wp = UI_NOTIFY_FILEFAIL;
             lp = 7;
             goto Quit_open_mspfile_thread;
+        }
+        if(fileJPG == ft) /* we still need to check the last two bytes */
+        {
+            if((0xff != p[size-2]) || (0xd9 != p[size-1]))
+            {
+                MemoryContextDelete(mcxt);
+                wp = UI_NOTIFY_FILEFAIL;
+                lp = 7;
+                goto Quit_open_mspfile_thread;
+            }
         }
 
         D2DRenderNode n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
@@ -192,6 +208,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
                                 NULL, 0.0, WICBitmapPaletteTypeMedianCut);
 
         m = d2d.pData;
+
         EnterCriticalSection(&(d2d.cs));
             d2d.pData = n;
         LeaveCriticalSection(&(d2d.cs));

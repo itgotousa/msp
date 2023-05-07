@@ -60,7 +60,7 @@ public:
 		// Get the size of screen to the variable desktop
 		::GetWindowRect(hDesktop, &desktop);
 		rc.top = rc.left = 0;
-		rc.right = desktop.right >> 1;
+		rc.right = desktop.right >> 2;
 		rc.bottom = desktop.bottom - 200;
 		if(wndFrame.CreateEx(NULL, rc) == NULL)
 		{
@@ -248,6 +248,11 @@ static int ExitInstance(HINSTANCE hInstance)
 {
 	int tries = 20;
 	SetEvent(g_kaSignal[0]); /* wakeup the monitoring thread */
+
+
+	EnterCriticalSection(&(d2d.cs));
+		ReleaseD2DResource(d2d.pData);
+	LeaveCriticalSection(&(d2d.cs));
 
 	DeleteCriticalSection(&(d2d.cs));
 	

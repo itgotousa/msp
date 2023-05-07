@@ -18,7 +18,9 @@ typedef enum
     fileUnKnown = 0,
     fileMD,
     fileSVG,
-    filePNG
+    filePNG,
+    fileJPG,
+    fileGIF
 } fileType;
 
 #define UI_NOTIFY_MONITOR	0x01
