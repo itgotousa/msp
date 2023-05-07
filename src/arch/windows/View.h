@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "threadwin.h"
-
 class CView : public CScrollWindowImpl<CView>
 {
 public:
@@ -200,7 +198,9 @@ public:
 			ZeroMemory(g_filepath, MAX_PATH + 1);
 			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH);
 			
-			_beginthreadex(NULL, 0, open_mspfile_thread, m_hWnd, 0, NULL);
+			tp.hWnd = m_hWnd;
+			tp.pfilePath = (TCHAR*)g_filepath;
+			_beginthreadex(NULL, 0, open_mspfile_thread, &tp, 0, NULL);
 		}
 
 		return 0;
@@ -233,8 +233,10 @@ public:
 		ZeroMemory(g_filepath, MAX_PATH + 1);
 		wmemcpy((wchar_t*)g_filepath, lpszURL, MAX_PATH);
 
-		_beginthreadex(NULL, 0, open_mspfile_thread, m_hWnd, 0, NULL);
-		
+		tp.hWnd = m_hWnd;
+		tp.pfilePath = (TCHAR*)g_filepath;
+		_beginthreadex(NULL, 0, open_mspfile_thread, &tp, 0, NULL);
+
 		return 0;
 	}
 
@@ -249,6 +251,7 @@ public:
 				case filePNG	:
 				case fileJPG	:
 				case fileGIF	:				
+				case fileSVG	:
 					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
 					InvalidateRect(NULL);
 					UpdateWindow();
@@ -263,7 +266,21 @@ public:
 	}
 
 	void DrawSVGGraphic(D2DRenderNode n)
-	{}
+	{
+	    HRESULT hr = S_OK;
+
+		if(NULL == n->pGeometry) return;
+		
+		ID2D1SolidColorBrush* brush = NULL;
+
+		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+		if(FAILED(hr)) return;
+		
+		m_pRenderTarget->DrawGeometry(n->pGeometry, brush, 1, n->pStrokeStyle);
+
+		brush->Release();
+		brush = NULL;
+	}
 	
 	void DrawSVGText(D2DRenderNode n)
 	{

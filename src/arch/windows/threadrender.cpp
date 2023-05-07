@@ -1,10 +1,10 @@
-#ifndef __THREADWIN_H__
-#define __THREADWIN_H__
-
+#include "stdafx.h"
 #include "pgcore.h"
 #include "svg.h"
+#include "resource.h"
+#include "mspwin.h"
 
-static void ReleaseD2DResource(D2DRenderNode n)
+void ReleaseD2DResource(D2DRenderNode n)
 {
     while(NULL != n)
     {
@@ -28,6 +28,17 @@ static void ReleaseD2DResource(D2DRenderNode n)
             n->pStream->Release();
             n->pStream = NULL;
         }
+        if(NULL != n->pGeometry)
+        {
+            n->pGeometry->Release();
+            n->pGeometry = NULL;
+        }
+        if(NULL != n->pStrokeStyle)
+        {
+            n->pStrokeStyle->Release();
+            n->pStrokeStyle = NULL;
+        }
+        
         n = (D2DRenderNode)n->std.next;
     }
 }
@@ -43,11 +54,14 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     LPARAM lp = 0;
     D2DRenderNode m = NULL;
     MemoryContext mcxt = NULL;
+    HRESULT hr = S_OK;
+    ThreadParam* t = (ThreadParam*)lpData;
 
-	HWND hWndUI = (HWND)lpData;
+    if(NULL == t) return 0;
+	HWND hWndUI = t->hWnd;
 	ATLASSERT(::IsWindow(hWndUI));
 
-	if (0 != _tsopen_s(&fd, g_filepath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
+	if (0 != _tsopen_s(&fd, t->pfilePath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
 	{
         wp = UI_NOTIFY_FILEFAIL;
         lp = 1;
@@ -99,7 +113,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     if(filePNG == ft || fileJPG == ft || fileGIF == ft) 
     {
         mcxt = AllocSetContextCreate(TopMemoryContext,
-                                    "renderCxt",
+                                    "ImageCxt",
                                     ALLOCSET_DEFAULT_SIZES);
         if(NULL == mcxt)
         {
@@ -153,8 +167,8 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         n->std.data	= p;
         n->std.len  = size;
 
-        d2d.pIWICFactory->CreateStream(&(n->pStream));
-        if(NULL == n->pStream)
+        hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
+        if(FAILED(hr) || NULL == n->pStream)
         {
             MemoryContextDelete(mcxt);
             wp = UI_NOTIFY_FILEFAIL;
@@ -162,11 +176,19 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             goto Quit_open_mspfile_thread;
         }
 
-        n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.len);
-        d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL, WICDecodeMetadataCacheOnLoad, 
+        hr = n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.len);
+        if(FAILED(hr))
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 7;
+            goto Quit_open_mspfile_thread;
+        }
+
+        hr = d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL, WICDecodeMetadataCacheOnLoad, 
                                                 &(n->pDecoder));
 
-        if(NULL == n->pDecoder)
+        if(FAILED(hr) || NULL == n->pDecoder)
         {
             n->pStream->Release();
             n->pStream = NULL;
@@ -176,8 +198,8 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             goto Quit_open_mspfile_thread;
         }
 
-        n->pDecoder->GetFrame(0, &(n->pFrame));
-        if(NULL == n->pFrame)
+        hr = n->pDecoder->GetFrame(0, &(n->pFrame));
+        if(FAILED(hr) || NULL == n->pFrame)
         {
             n->pStream->Release();
             n->pStream = NULL;
@@ -189,8 +211,8 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             goto Quit_open_mspfile_thread;
         }
 
-        d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
-        if(NULL == n->pConverter)
+        hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
+        if(FAILED(hr) || NULL == n->pConverter)
         {
             n->pStream->Release();
             n->pStream = NULL;
@@ -204,9 +226,27 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             goto Quit_open_mspfile_thread;
         }
 
-        n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, 
+        hr = n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, 
                                 NULL, 0.0, WICBitmapPaletteTypeMedianCut);
 
+        if(FAILED(hr))
+        {
+            n->pStream->Release();
+            n->pStream = NULL;
+            n->pDecoder->Release();
+            n->pDecoder = NULL;
+            n->pFrame->Release();
+            n->pFrame = NULL;
+            n->pConverter->Release();
+            n->pConverter = NULL;
+
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 7;
+            goto Quit_open_mspfile_thread;
+        }
+
+        d2d.ft = ft;        
         m = d2d.pData;
 
         EnterCriticalSection(&(d2d.cs));
@@ -223,6 +263,83 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 
         wp = UI_NOTIFY_FILEOPEN;
         lp = (LPARAM)ft;
+        goto Quit_open_mspfile_thread;
+    }
+
+    ft = fileSVG;
+    if(fileSVG == ft)
+    {
+        mcxt = AllocSetContextCreate(TopMemoryContext,
+                                    "SVGCxt",
+                                    ALLOCSET_DEFAULT_SIZES);
+        if(NULL == mcxt)
+        {
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 5;
+            goto Quit_open_mspfile_thread;
+        }
+        
+        MemoryContextSwitchTo(mcxt);
+
+        D2DRenderNode n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+        if(NULL == n)
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 8;
+            goto Quit_open_mspfile_thread;
+        }
+
+        hr = d2d.pFactory->CreatePathGeometry(&(n->pGeometry));
+        if(FAILED(hr) || NULL == n->pGeometry)
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 7;
+            goto Quit_open_mspfile_thread;
+        }
+
+        n->std.flag = SO_TYPE_GRAPHIC;
+
+        ID2D1GeometrySink *pSink = NULL;
+        hr = n->pGeometry->Open(&pSink);
+        if (SUCCEEDED(hr))
+        {
+            pSink->SetFillMode(D2D1_FILL_MODE_WINDING);
+            pSink->BeginFigure(
+                D2D1::Point2F(10,10),
+                D2D1_FIGURE_BEGIN_HOLLOW
+                );
+            D2D1_POINT_2F points[] = {
+                D2D1::Point2F(110, 10),
+                D2D1::Point2F(110, 110),
+                };
+            pSink->AddLines(points, ARRAYSIZE(points));
+            pSink->EndFigure(D2D1_FIGURE_END_OPEN);    
+        }
+
+        hr = pSink->Close();
+        pSink->Release();
+        pSink = NULL;
+
+        d2d.ft = ft;        
+        m = d2d.pData;
+
+        EnterCriticalSection(&(d2d.cs));
+            d2d.pData = n;
+        LeaveCriticalSection(&(d2d.cs));
+        
+        ReleaseD2DResource(m);
+
+        if(NULL != m)
+        {
+            mcxt = *(MemoryContext *) (((char *) m) - sizeof(void *)); 
+            MemoryContextDelete(mcxt);
+        }
+
+        wp = UI_NOTIFY_FILEOPEN;
+        lp = (LPARAM)ft;
+        goto Quit_open_mspfile_thread;
     }
 
 Quit_open_mspfile_thread:
@@ -232,37 +349,3 @@ Quit_open_mspfile_thread:
     return 0;
 }
 
-#if 0	
-
-unsigned WINAPI _monitor_msp_thread(LPVOID lpData)
-{
-	DWORD dwRet;
-	HWND hWndUI = (HWND)lpData;
-	ATLASSERT(::IsWindow(hWndUI));
-
-	g_kaSignal[1] = FindFirstChangeNotification(g_filepath, FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE);
-
-	if(INVALID_HANDLE_VALUE == g_kaSignal[1]) {
-		MessageBox(NULL, g_filepath, _T("Cannot Monitor"), MB_OK);
-		return 0;
-	}
-
-	InterlockedIncrement(&g_threadCount);
-
-	dwRet = MsgWaitForMultipleObjects(2, g_kaSignal, FALSE, INFINITE, QS_ALLINPUT);
-
-	if(WAIT_OBJECT_0 + 1 == dwRet)
-	{
-		//MessageBox(NULL, g_filepath, _T("MB_OK"), MB_OK);
-		PostMessage(hWndUI, WM_UI_NOTIFY, UI_NOTIFY_MONITOR, 0);
-	}
-
-	InterlockedDecrement(&g_threadCount);
-
-	MessageBox(NULL, _T("Monitoring thead is quiting!"), _T("MB_OK"), MB_OK);
-
-	return 0;
-}
-#endif 
-
-#endif /* __THREADWIN_H__ */

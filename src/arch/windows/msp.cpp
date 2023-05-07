@@ -1,11 +1,5 @@
 // msp.cpp : main source file for msp.exe
 //
-#ifndef _UNICODE
-#define _UNICODE
-#define UNICODE
-#endif 
-
-#define NOMINMAX
 
 #include "stdafx.h"
 
@@ -23,10 +17,9 @@
 #include "View.h"
 #include "aboutdlg.h"
 #include "MainFrm.h"
-//#include "D2DSvg.hpp"
 
+ThreadParam  tp = {0};
 LONG	g_threadCount = 0;
-BOOL 	g_fileloaded = FALSE;
 BOOL 	g_monitor = FALSE;
 HANDLE  g_kaSignal[2] = {NULL, NULL};
 TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
@@ -160,10 +153,9 @@ public:
 static int InitInstance(HINSTANCE hInstance)
 {
 	g_threadCount = 0;
-	g_fileloaded = FALSE;
 	g_monitor = FALSE;
 	d2d.pFactory = NULL;
-
+	d2d.ft = fileUnKnown;
 	InitializeCriticalSection(&(d2d.cs));
 
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
@@ -199,45 +191,6 @@ static int InitInstance(HINSTANCE hInstance)
 	}
 
 	ZeroMemory(g_filepath, MAX_PATH + 1);
-
-#if 0	
-	hr = g_pFactory->CreatePathGeometry(&g_path);
-	if(FAILED(hr)) return -1;
-
-	ID2D1GeometrySink *pSink = NULL;	
-
-	hr = g_path->Open(&pSink);
-	if(FAILED(hr)) return -1;
-	if(NULL == pSink) return -1;
-
-	pSink->BeginFigure(
-		D2D1::Point2F(0, 0),
-		D2D1_FIGURE_BEGIN_FILLED
-		);
-
-	pSink->AddLine(D2D1::Point2F(200, 0));
-
-	pSink->AddBezier(
-		D2D1::BezierSegment(
-			D2D1::Point2F(150, 50),
-			D2D1::Point2F(150, 150),
-			D2D1::Point2F(200, 200))
-		);
-
-	pSink->AddLine(D2D1::Point2F(0, 200));
-
-	pSink->AddBezier(
-		D2D1::BezierSegment(
-			D2D1::Point2F(50, 150),
-			D2D1::Point2F(50, 50),
-			D2D1::Point2F(0, 0))
-		);
-
-	pSink->EndFigure(D2D1_FIGURE_END_CLOSED);
-
-	hr = pSink->Close();
-	pSink->Release();
-#endif 
 
 	MemoryContextInit();
 	//MessageBox(NULL, _T("MemoryContextInit!"), _T("MB_OK"), MB_OK);

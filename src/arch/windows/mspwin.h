@@ -35,6 +35,8 @@ typedef struct D2DRenderNodeData
     IWICBitmapDecoder*      pDecoder;
     IWICBitmapFrameDecode*  pFrame;
     IWICFormatConverter*    pConverter;
+    ID2D1PathGeometry*      pGeometry;
+    ID2D1StrokeStyle*       pStrokeStyle;
 } D2DRenderNodeData;
 
 typedef struct D2DRenderNodeData *D2DRenderNode;
@@ -45,17 +47,28 @@ typedef struct D2DContextData
     IDWriteFactory*     pDWriteFactory;
     IWICImagingFactory* pIWICFactory;
     IDWriteTextFormat*  pTextFormat;
+    fileType            ft;
     CRITICAL_SECTION    cs;
     D2DRenderNode       pData;
 } D2DContextData;
 
+typedef struct
+{
+    HWND    hWnd;
+    TCHAR*  pfilePath;
+} ThreadParam;
 
+extern ThreadParam  tp;
 extern TCHAR   g_filepath[MAX_PATH + 1];
 extern BOOL    g_monitor;
 extern HANDLE  g_kaSignal[2];
 extern LONG    g_threadCount;
 
 extern  D2DContextData d2d;
+
+void ReleaseD2DResource(D2DRenderNode n);
+
+unsigned WINAPI open_mspfile_thread(LPVOID lpData);
 
 #endif /* __MSPWIN_H__ */
 
