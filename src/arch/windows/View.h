@@ -4,118 +4,7 @@
 
 #pragma once
 
-/* BBK_ALIGN() is only to be used to align on a power of 2 boundary */
-#define BBK_ALIGN(size, boundary) (((size) + ((boundary) - 1)) & ~((boundary) - 1))
-/* Default alignment */
-#define BBK_ALIGN_DEFAULT(size)	BBK_ALIGN(size, 8)
-#define BBK_ALIGN_PAGE(size)	BBK_ALIGN(size, 1<<12)
-
-#define MAX_BUF_LEN   (512 * 1024 * 1024) /* the max length of supported file is 512M */
-
-typedef enum 
-{
-    fileUnKnown = 0,
-    fileMD,
-    fileSVG,
-    filePNG
-} fileType;
-
-#define UI_NOTIFY_MONITOR	0x01
-#define UI_NOTIFY_FILEOPN	0x02
-
-unsigned WINAPI _monitor_msp_thread(LPVOID lpData)
-{
-#if 0	
-	DWORD dwRet;
-	HWND hWndUI = (HWND)lpData;
-	ATLASSERT(::IsWindow(hWndUI));
-
-	g_kaSignal[1] = FindFirstChangeNotification(g_filepath, FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE);
-
-	if(INVALID_HANDLE_VALUE == g_kaSignal[1]) {
-		MessageBox(NULL, g_filepath, _T("Cannot Monitor"), MB_OK);
-		return 0;
-	}
-
-	InterlockedIncrement(&g_threadCount);
-
-	dwRet = MsgWaitForMultipleObjects(2, g_kaSignal, FALSE, INFINITE, QS_ALLINPUT);
-
-	if(WAIT_OBJECT_0 + 1 == dwRet)
-	{
-		//MessageBox(NULL, g_filepath, _T("MB_OK"), MB_OK);
-		PostMessage(hWndUI, WM_UI_NOTIFY, UI_NOTIFY_MONITOR, 0);
-	}
-
-	InterlockedDecrement(&g_threadCount);
-
-	MessageBox(NULL, _T("Monitoring thead is quiting!"), _T("MB_OK"), MB_OK);
-#endif 
-	return 0;
-}
-
-unsigned WINAPI open_msp_thread(LPVOID lpData)
-{
-	char *p;
-	int   fd;
-	unsigned int size, align_size, bytes, ret;
-	fileType ft = fileUnKnown;
-
-	HWND hWndUI = (HWND)lpData;
-	ATLASSERT(::IsWindow(hWndUI));
-
-#if 0
-	if (0 != _tsopen_s(&fd, g_filepath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
-	{
-		return 0;
-	}
-	
-	size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the video file size */
-	if (size > MAX_BUF_LEN) 
-	{
-		_close(fd);
-		return 0;
-	}
-
-	align_size = BBK_ALIGN_PAGE(size); /* 4K page align for performance */
-
-	if(NULL != g_buffer) { free(g_buffer); }
-
-	g_buffer = (char*)malloc(align_size);
-	if (NULL == g_buffer)
-	{
-		_close(fd);
-		return 0;
-	}
-	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
-	bytes = (unsigned int)_read(fd, g_buffer, size); /* read the entire file into g_buffer */
-	if (bytes != size) /* read error, since bytes != size */
-	{
-		free(g_buffer);
-		g_buffer = NULL;
-		_close(fd);
-		return 0;
-	}
-	_close(fd);
-
-	/* check PNG magic number: 89 50 4e 47 0d 0a 1a 0a */
-	p = g_buffer;
-	if((0x89 == p[0]) && (0x50 == p[1]) && (0x4e == p[2]) && (0x47 == p[3]) && 
-		(0x0d == p[4]) && (0x0a == p[5]) && (0x1a == p[6]) && (0x0a == p[7]))
-	{
-		ft = filePNG;
-	}
-
-	if(fileUnKnown == ft) 
-	{
-		free(g_buffer);
-		g_buffer = NULL;
-	}
-
-	PostMessage(hWndUI, WM_UI_NOTIFY, UI_NOTIFY_FILEOPN, ft);
-#endif 
-	return 0;
-}
+#include "threadwin.h"
 
 class CView : public CScrollWindowImpl<CView>
 {
@@ -124,14 +13,16 @@ public:
 
     ID2D1HwndRenderTarget*	m_pRenderTarget;
 
-	CComPtr<ID2D1PathGeometry> GetGraphicsPath() {}
-
 	CView() : m_pRenderTarget(NULL) {}
 
 	BOOL PreTranslateMessage(MSG* pMsg)
 	{
 		pMsg;
 		return FALSE;
+	}
+
+	void DrawDefault()
+	{
 	}
 
 	void CalculateLayout()
@@ -162,60 +53,76 @@ public:
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties(m_hWnd, size),
 				&m_pRenderTarget);
-#if 0
-			if (SUCCEEDED(hr))
-			{
-				const D2D1_COLOR_F color = D2D1::ColorF(0, 0, 0);
-				hr = m_pRenderTarget->CreateSolidColorBrush(color, &m_pBrush);
-
-				if (SUCCEEDED(hr))
-				{
-					CalculateLayout();
-				}
-			}
-#endif 			
 		}
 		return hr;
 	}
 
 	void DoPaint(CDCHandle dc)
 	{
-		if(NULL != g_renderdata)
-		{
-			HRESULT hr = CreateGraphicsResources();
-			if (SUCCEEDED(hr))
-			{
-				unsigned int so_type;
-				RenderNode	n = g_renderdata;
-				
-				m_pRenderTarget->BeginDraw();
-				m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-				m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
-				while(NULL != n)
-				{
-					so_type = (0x03 & n->flag);
-					switch(so_type)
-					{
-						case SO_TYPE_GRAPHIC	:	DrawSVGGraphic(m_pRenderTarget, n);
-													break;
-						case SO_TYPE_TEXT		:	DrawSVGText(m_pRenderTarget, n);
-													break;
-						case SO_TYPE_IMAGE		:	DrawSVGImage(m_pRenderTarget, n);
-													break;
-						default					:	break;
-					}
-					n = n->next;
-				}
+		int tries	= 20;
+		BOOL get_it = FALSE;
 
-				hr = m_pRenderTarget->EndDraw();
-				
-				if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
-				{
-					m_pRenderTarget->Release();
-					m_pRenderTarget = NULL;
-				}			
+		while(tries > 0 )
+		{
+			if(FALSE != TryEnterCriticalSection(&(d2d.cs))) 
+			{
+				get_it = TRUE;
+				break;
 			}
+			tries--; 
 		}
+
+		HRESULT hr = CreateGraphicsResources();
+
+		if(FALSE == get_it) 
+		{
+			if(SUCCEEDED(hr)) DrawDefault();
+			return;
+		}
+
+		if(NULL == d2d.pData)
+		{
+			if(SUCCEEDED(hr)) DrawDefault();
+			LeaveCriticalSection(&(d2d.cs));
+			return;
+		}
+
+		if(FAILED(hr)) {
+			LeaveCriticalSection(&(d2d.cs));
+			return;
+		}
+
+		unsigned int so_type;
+		RenderNode	n = d2d.pData;
+		
+		m_pRenderTarget->BeginDraw();
+		m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+		m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
+		while(NULL != n)
+		{
+			so_type = (0x03 & n->flag);
+			switch(so_type)
+			{
+				case SO_TYPE_GRAPHIC	:	DrawSVGGraphic(m_pRenderTarget, n);
+											break;
+				case SO_TYPE_TEXT		:	DrawSVGText(m_pRenderTarget, n);
+											break;
+				case SO_TYPE_IMAGE		:	DrawSVGImage(m_pRenderTarget, n);
+											break;
+				default					:	break;
+			}
+			n = n->next;
+		}
+
+		LeaveCriticalSection(&(d2d.cs));
+
+		hr = m_pRenderTarget->EndDraw();
+		
+		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+		{
+			m_pRenderTarget->Release();
+			m_pRenderTarget = NULL;
+		}			
 	}
 
 	BEGIN_MSG_MAP(CView)
@@ -235,20 +142,20 @@ public:
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
-
-		g_renderdata = (RenderNode)palloc(sizeof(RenderNodeData));
-		RenderNode n = g_renderdata;
+		m_pRenderTarget = NULL;
+#if 0		
+		d2d.pData = (RenderNode)palloc(sizeof(RenderNodeData));
+		RenderNode n = d2d.pData;
 		if(NULL != n)
 		{
 			n->flag = SO_TYPE_TEXT;
 			n->next = NULL;
-			//n->ctx  = TopMemoryContext;
 			n->x	= -10;
 			n->y	= 10;
-			n->data	= _T("Bitcoion!!!");
+			n->data	= _T("Bitcoin!!!");
 			n->len  = wcsnlen_s((const wchar_t*)n->data, 100);
 		}
-		
+#endif 		
 		HRESULT hr = CreateGraphicsResources();
 		return hr;
 	}
@@ -270,7 +177,8 @@ public:
 			ZeroMemory(g_filepath, MAX_PATH + 1);
 			wmemcpy((wchar_t*)g_filepath, path, MAX_PATH + 1);
 			g_fileloaded = TRUE;
-			//_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
+			
+			_beginthreadex(NULL, 0, open_mspfile_thread, m_hWnd, 0, NULL);
 
 			::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 		}
@@ -307,29 +215,29 @@ public:
 		g_fileloaded = TRUE;
 
 		//_beginthreadex(NULL, 0, _monitor_msp_thread, m_hWnd, 0, NULL);
-		// _beginthreadex(NULL, 0, open_msp_thread, m_hWnd, 0, NULL);
 		return 0;
 	}
 
 	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
 	{
-		if(UI_NOTIFY_MONITOR == lParam)
+
+		MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);
+		return 0;
+		
+		if(UI_NOTIFY_FILEOPN == wParam)
 		{
-			MessageBox(_T("File is changed"), _T("MB_OK"), MB_OK);
+			fileType ft = (fileType)lParam;
+
+			switch(ft)
+			{
+				case filePNG:
+					MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);				
+					break;
+				default:
+					return 0;
+			}
 		}
 
-#if 0		
-		fileType ft = (fileType)lParam;
-
-		switch(ft)
-		{
-			case filePNG:
-				MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);				
-				break;
-			default:
-				return 0;
-		}
-#endif 
 		return 0;
 	}
 

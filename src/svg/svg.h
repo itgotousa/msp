@@ -17,17 +17,10 @@ typedef struct RenderNodeData
 {
     unsigned int    flag;
     RenderNode      next;
-    MemoryContext   ctx;
     void*           data;
     unsigned int    len;
-    float           x;
-    float           y;
-    float           a;
-    float           b;
-    float           c;
-    float           d;
-    float           e;
-    float           f;
+    float           x, y;
+    float           a,b,c,d,e,f;
 } RenderNodeData;
 
 #endif /* __SVG_H__ */

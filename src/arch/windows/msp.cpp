@@ -33,7 +33,6 @@ HANDLE  g_kaSignal[2] = {NULL, NULL};
 TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
 
 D2DContextData 	d2d = {0};
-RenderNode		g_renderdata = NULL;
 
 CAppModule _Module;
 
@@ -166,7 +165,8 @@ static int InitInstance(HINSTANCE hInstance)
 	g_monitor = FALSE;
 	d2d.pFactory = NULL;
 	g_buffer = NULL;
-	g_renderdata = NULL;
+
+	InitializeCriticalSection(&(d2d.cs));
 
 	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
 	if(FAILED(hr)) return -1;
@@ -233,6 +233,7 @@ static int InitInstance(HINSTANCE hInstance)
 	hr = pSink->Close();
 	pSink->Release();
 #endif 
+
 	MemoryContextInit();
 	//MessageBox(NULL, _T("MemoryContextInit!"), _T("MB_OK"), MB_OK);
 	return 0;
@@ -245,6 +246,8 @@ static int ExitInstance(HINSTANCE hInstance)
 
 	if(NULL != g_buffer) free(g_buffer);
 
+	DeleteCriticalSection(&(d2d.cs));
+	
 	if(NULL != d2d.pFactory) {
 		(d2d.pFactory)->Release();
 		(d2d.pFactory) = NULL;
