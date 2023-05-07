@@ -150,6 +150,45 @@ public:
 	}
 };
 
+void ReleaseD2DResource(D2DRenderNode n)
+{
+    while(NULL != n)
+    {
+        if(NULL != n->pConverter)
+        {
+            n->pConverter->Release();
+            n->pConverter = NULL;
+        }
+        if(NULL != n->pFrame)
+        {
+            n->pFrame->Release();
+            n->pFrame = NULL;
+        }
+        if(NULL != n->pDecoder)
+        {
+            n->pDecoder->Release();
+            n->pDecoder = NULL;
+        }
+        if(NULL != n->pStream)
+        {
+            n->pStream->Release();
+            n->pStream = NULL;
+        }
+        if(NULL != n->pGeometry)
+        {
+            n->pGeometry->Release();
+            n->pGeometry = NULL;
+        }
+        if(NULL != n->pStrokeStyle)
+        {
+            n->pStrokeStyle->Release();
+            n->pStrokeStyle = NULL;
+        }
+        
+        n = (D2DRenderNode)n->std.next;
+    }
+}
+
 static int InitInstance(HINSTANCE hInstance)
 {
 	g_threadCount = 0;
