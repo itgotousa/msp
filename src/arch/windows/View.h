@@ -12,8 +12,9 @@ public:
 	DECLARE_WND_CLASS(NULL)
 
     ID2D1HwndRenderTarget*	m_pRenderTarget;
+	ID2D1Bitmap*			m_pBitmap;
 
-	CView() : m_pRenderTarget(NULL) {}
+	CView() : m_pRenderTarget(NULL), m_pBitmap(NULL) {}
 
 	BOOL PreTranslateMessage(MSG* pMsg)
 	{
@@ -53,13 +54,18 @@ public:
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties(m_hWnd, size),
 				&m_pRenderTarget);
+			if(NULL != m_pBitmap) 
+			{
+				m_pBitmap->Release();
+				m_pBitmap = NULL;
+			}
 		}
 		return hr;
 	}
 
 	void DoPaint(CDCHandle dc)
 	{
-		int tries	= 20;
+		int tries	= 10;
 		BOOL get_it = FALSE;
 
 		while(tries > 0 )
@@ -93,25 +99,34 @@ public:
 		}
 
 		unsigned int so_type;
-		RenderNode	n = d2d.pData;
+		D2DRenderNode	n = d2d.pData;
 		
 		m_pRenderTarget->BeginDraw();
 		m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 		m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
 		while(NULL != n)
 		{
-			so_type = (0x03 & n->flag);
+			so_type = (0x03 & n->std.flag);
 			switch(so_type)
 			{
-				case SO_TYPE_GRAPHIC	:	DrawSVGGraphic(m_pRenderTarget, n);
-											break;
-				case SO_TYPE_TEXT		:	DrawSVGText(m_pRenderTarget, n);
-											break;
-				case SO_TYPE_IMAGE		:	DrawSVGImage(m_pRenderTarget, n);
-											break;
-				default					:	break;
+				case SO_TYPE_GRAPHIC	:	
+						DrawSVGGraphic(m_pRenderTarget, n);
+						break;
+				case SO_TYPE_TEXT		:	
+						DrawSVGText(m_pRenderTarget, n);
+						break;
+				case SO_TYPE_IMAGE		:
+						if(NULL != m_pBitmap)
+						{
+							m_pBitmap->Release();
+							m_pBitmap = NULL;
+						}
+						DrawSVGImage(m_pRenderTarget, n, &m_pBitmap);
+						break;
+				default					:	
+						break;
 			}
-			n = n->next;
+			n = (D2DRenderNode)n->std.next;
 		}
 
 		LeaveCriticalSection(&(d2d.cs));
@@ -143,6 +158,7 @@ public:
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
 		m_pRenderTarget = NULL;
+		m_pBitmap = NULL;
 #if 0		
 		d2d.pData = (RenderNode)palloc(sizeof(RenderNodeData));
 		RenderNode n = d2d.pData;
@@ -162,8 +178,16 @@ public:
 
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
 	{
-		m_pRenderTarget->Release();
-		m_pRenderTarget = NULL;
+		if(NULL!= m_pBitmap)
+		{
+			m_pBitmap->Release();
+			m_pBitmap = NULL;
+		}
+		if(NULL!= m_pRenderTarget)
+		{
+			m_pRenderTarget->Release();
+			m_pRenderTarget = NULL;
+		}
 		return 0;
 	}
 
@@ -220,18 +244,16 @@ public:
 
 	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
 	{
-
-		MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);
-		return 0;
-		
-		if(UI_NOTIFY_FILEOPN == wParam)
+		if(UI_NOTIFY_FILEOPEN == wParam)
 		{
 			fileType ft = (fileType)lParam;
 
 			switch(ft)
 			{
 				case filePNG:
-					MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);				
+					//MessageBox(_T("PNG"), _T("MB_OK"), MB_OK);
+					InvalidateRect(NULL);
+					UpdateWindow();
 					break;
 				default:
 					return 0;
@@ -241,10 +263,12 @@ public:
 		return 0;
 	}
 
-	static void DrawSVGGraphic(ID2D1HwndRenderTarget* target, RenderNode n)
+	static void DrawSVGGraphic(ID2D1HwndRenderTarget* target, D2DRenderNode n)
 	{}
-	static void DrawSVGText(ID2D1HwndRenderTarget* target, RenderNode n)
+	
+	static void DrawSVGText(ID2D1HwndRenderTarget* target, D2DRenderNode n)
 	{
+#if 0		
 		HRESULT hr = S_OK;
 		ID2D1SolidColorBrush* brush = NULL;
 
@@ -258,9 +282,13 @@ public:
 
 		brush->Release();
 		brush = NULL;
-
+#endif 
 	}
-	static void DrawSVGImage(ID2D1HwndRenderTarget* target, RenderNode n)
-	{}
+
+	static void DrawSVGImage(ID2D1HwndRenderTarget* target, D2DRenderNode n, ID2D1Bitmap** ppBitmap)
+	{
+		target->CreateBitmapFromWicBitmap(n->pConverter, nullptr, ppBitmap);
+		target->DrawBitmap(*ppBitmap);
+	}
 
 };

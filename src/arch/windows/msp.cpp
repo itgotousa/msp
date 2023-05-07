@@ -28,7 +28,6 @@
 LONG	g_threadCount = 0;
 BOOL 	g_fileloaded = FALSE;
 BOOL 	g_monitor = FALSE;
-char   *g_buffer = NULL;
 HANDLE  g_kaSignal[2] = {NULL, NULL};
 TCHAR   g_filepath[MAX_PATH + 1] = { 0 };
 
@@ -164,7 +163,6 @@ static int InitInstance(HINSTANCE hInstance)
 	g_fileloaded = FALSE;
 	g_monitor = FALSE;
 	d2d.pFactory = NULL;
-	g_buffer = NULL;
 
 	InitializeCriticalSection(&(d2d.cs));
 
@@ -172,6 +170,12 @@ static int InitInstance(HINSTANCE hInstance)
 	if(FAILED(hr)) return -1;
 	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&(d2d.pDWriteFactory)));
 	if(FAILED(hr)) return -1;
+	
+	hr = CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, 
+						IID_IWICImagingFactory, reinterpret_cast<void**>(&(d2d.pIWICFactory)));	
+	if(FAILED(hr)) return -1;
+
+#if 0	
 	hr = d2d.pDWriteFactory->CreateTextFormat(
             L"Courier New",                // Font family name.
             NULL,                       // Font collection (NULL sets it to use the system font collection).
@@ -186,6 +190,7 @@ static int InitInstance(HINSTANCE hInstance)
 
 	hr = d2d.pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 	if (SUCCEEDED(hr)) d2d.pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+#endif 
 
 	g_kaSignal[0] = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if(NULL == g_kaSignal[0])
@@ -244,8 +249,6 @@ static int ExitInstance(HINSTANCE hInstance)
 	int tries = 20;
 	SetEvent(g_kaSignal[0]); /* wakeup the monitoring thread */
 
-	if(NULL != g_buffer) free(g_buffer);
-
 	DeleteCriticalSection(&(d2d.cs));
 	
 	if(NULL != d2d.pFactory) {
@@ -256,6 +259,11 @@ static int ExitInstance(HINSTANCE hInstance)
 	if(NULL != d2d.pDWriteFactory) {
 		(d2d.pDWriteFactory)->Release();
 		(d2d.pDWriteFactory) = NULL;
+	}
+
+	if(NULL != d2d.pIWICFactory) {
+		(d2d.pIWICFactory)->Release();
+		(d2d.pIWICFactory) = NULL;
 	}
 
 	if(NULL != d2d.pTextFormat) {

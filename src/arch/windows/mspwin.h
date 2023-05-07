@@ -11,7 +11,7 @@
 #define MSP_ALIGN_DEFAULT(size)	MSP_ALIGN(size, 8)
 #define MSP_ALIGN_PAGE(size)	MSP_ALIGN(size, 1<<12)
 
-#define MAX_BUF_LEN   (512 * 1024 * 1024) /* the max length of supported file is 512M */
+#define MAX_BUF_LEN   (128 * 1024 * 1024) /* the max length of supported file is 128 MB */
 
 typedef enum 
 {
@@ -22,22 +22,35 @@ typedef enum
 } fileType;
 
 #define UI_NOTIFY_MONITOR	0x01
-#define UI_NOTIFY_FILEOPN	0x02
+#define UI_NOTIFY_FILEOPEN	0x02
+#define UI_NOTIFY_FILEFAIL	0x03
+
+typedef struct D2DRenderNodeData
+{
+    RenderNodeData          std;
+
+    IWICStream*             pStream;
+    IWICBitmapDecoder*      pDecoder;
+    IWICBitmapFrameDecode*  pFrame;
+    IWICFormatConverter*    pConverter;
+} D2DRenderNodeData;
+
+typedef struct D2DRenderNodeData *D2DRenderNode;
 
 typedef struct D2DContextData
 {
     ID2D1Factory*       pFactory;
     IDWriteFactory*     pDWriteFactory;
+    IWICImagingFactory* pIWICFactory;
     IDWriteTextFormat*  pTextFormat;
     CRITICAL_SECTION    cs;
-    RenderNode          pData;
+    D2DRenderNode       pData;
 } D2DContextData;
 
 
 extern TCHAR   g_filepath[MAX_PATH + 1];
 extern BOOL    g_fileloaded;
 extern BOOL    g_monitor;
-extern char   *g_buffer;
 extern HANDLE  g_kaSignal[2];
 extern LONG    g_threadCount;
 
