@@ -27,10 +27,33 @@ typedef enum
 #define UI_NOTIFY_FILEOPEN	0x02
 #define UI_NOTIFY_FILEFAIL	0x03
 
+#define ANIMATION_TIMER_ID  123
+
+#define SAFERELEASE(p)  do { if(NULL != (p)) { (p)->Release(); (p) = NULL; } } while(0)
+
+typedef struct AnimationData
+{
+    UINT            cxImage;
+    UINT            cyImage;
+    UINT            cxImagePixel;
+    UINT            cyImagePixel;
+    UINT            totalLoopCount;
+    UINT            loopNumber;
+    UINT            frameCount;
+    UINT            frameIndex;
+    UINT            frameDelay;
+    UINT            frameDisposal;
+    BOOL            hasLoop;
+    D2D1_RECT_F     framePosition;
+    D2D1_COLOR_F    color_bkg;
+} AnimationData;
+
+typedef struct AnimationData *Animation;
+
 typedef struct D2DRenderNodeData
 {
     RenderNodeData          std;
-
+    Animation               am;
     IWICStream*             pStream;
     IWICBitmapDecoder*      pDecoder;
     IWICBitmapFrameDecode*  pFrame;
