@@ -36,7 +36,7 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 
 #### 暂时抄袭一个logo(SVG格式）
 
-![svg/x5005.svg)
+![](svg/x5005.svg)
 
 
 ***
