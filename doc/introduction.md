@@ -1,7 +1,7 @@
 
 ## 什么是MSP?
 
-MSP是一个开源的，百分百原生的，极简约的文档阅读器，支持Markdown, SVG和PNG的显示，故名MSP(Markdown + SVG + PNG)。MSP不依赖除了操作系统以外的任何第三方的软件。为了保持软件的体积最小，MSP不支持除了Markdown/SVG和PNG以外的其它任何格式的内容。
+MSP是一个开源的，百分百原生的，极简约的文档阅读器，支持Markdown, SVG和PNG的显示，故名MSP(Markdown + SVG + PNG 或 Markdown + SVG + Picture)。MSP不依赖除了操作系统以外的任何第三方的软件。为了保持软件的体积最小，MSP不支持除了Markdown/SVG和PNG以外的其它任何格式的内容。
 
 注：在Windows平台上，利用了Windows Imaging Component (WIC)的解码器，所以默认支持png/jpg/gif等所有WIC可以解码的图像文件，故你可以使用msp当做一个图片阅读器使用，直接把图片文件拖拽到窗口中即可。
 
@@ -17,12 +17,10 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 
 ![](svg/x0003.svg)
 
-
 #### 遵循的规范
 - Markdown采用[Commonmark](https://spec.commonmark.org)
 - SVG目前支持[SVG 1.1](https://www.w3.org/TR/2011/REC-SVG11-20110816/)标准
 - 考虑支持[Tiny VG](https://tinyvg.tech/)，其规范的pdf文档已经上传(tinyvg-specification.pdf)
-
 
 ## 在Windows下的编译方法
 - 安装Visual Studio 2022 社区版，免费的，为微软的良心点赞。
@@ -33,10 +31,6 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 - 执行： cmake -G "NMake Makefiles" ../src
 - 执行： nmake 或nmake VERBOSE=1
 - 编译好的可执行文件是：D:\github\msp\build\arch\windows\msp-win64.exe
-
-#### 暂时抄袭一个logo(SVG格式）
-
-![](svg/x5005.svg)
 
 
 ***
