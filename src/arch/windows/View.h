@@ -484,8 +484,8 @@ public:
 		if(fileGIF == d2d.ft)
 		{
 			ID2D1Bitmap *pFrameToRender = NULL;
-			D2D1_RECT_F drawRect;
-			hr = CalculateDrawRectangle(drawRect);
+			//D2D1_RECT_F drawRect;
+			//hr = CalculateDrawRectangle(drawRect);
 			if (SUCCEEDED(hr))
 			{
 				// Get the bitmap to draw on the hwnd render target
@@ -496,7 +496,7 @@ public:
 			{
 				// Draw the bitmap onto the calculated rectangle
 				m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-				m_pRenderTarget->DrawBitmap(pFrameToRender, drawRect);
+				m_pRenderTarget->DrawBitmap(pFrameToRender, m_Am.framePosition);
 				SAFERELEASE(pFrameToRender);
 			}
 		}
