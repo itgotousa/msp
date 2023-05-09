@@ -99,6 +99,13 @@ SVG allows for three types of graphic objects: vector graphic shapes (e.g., path
 
 后面继续设置。MSP内置华为免费的[鸿蒙字体](https://developer.harmonyos.com/cn/docs/design/font-0000001157868583)作为缺省字体，这样就不受操作系统环境的影响了。
 
+### Direct2D API
+
+- ID2D1GeometrySink::AddArc
+- ID2D1GeometrySink::AddBezier 
+- ID2D1GeometrySink::AddLine
+- ID2D1GeometrySink::AddQuadraticBezier
+
 ### Text渲染引擎
 
 我打算采用Windows Terminal中最新的Atlas文本渲染引擎来做MSP的文本渲染。 本节内容提供了我对Atlas的研究成果。
