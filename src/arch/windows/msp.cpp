@@ -152,6 +152,9 @@ public:
 
 void ReleaseD2DResource(D2DRenderNode n)
 {
+	if(NULL == n) return;
+
+	MemoryContext mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
     while(NULL != n)
     {
         if(NULL != n->pConverter)
@@ -187,6 +190,9 @@ void ReleaseD2DResource(D2DRenderNode n)
         
         n = (D2DRenderNode)n->std.next;
     }
+
+	MemoryContextDelete(mcxt);
+
 }
 
 static int InitInstance(HINSTANCE hInstance)

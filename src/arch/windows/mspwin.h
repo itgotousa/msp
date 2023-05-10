@@ -89,7 +89,7 @@ extern LONG    g_threadCount;
 
 extern  D2DContextData d2d;
 
-void ReleaseD2DResource(D2DRenderNode n);
+extern void ReleaseD2DResource(D2DRenderNode n);
 
 unsigned WINAPI open_mspfile_thread(LPVOID lpData);
 
