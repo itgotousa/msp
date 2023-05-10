@@ -198,6 +198,8 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     return n;
 }
 
+STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len);
+
 static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
 {
     D2DRenderNode n = NULL;
@@ -206,8 +208,9 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
     int width = surface->width;
     int height = surface->height;
     int stride = surface->stride;
-    Size image_size;
+    uint32_t image_size; //, total_size;
     unsigned char* image = NULL;
+    HRESULT hr = S_OK;
 
     mcxt = AllocSetContextCreate(TopMemoryContext, "BmpCxt", ALLOCSET_DEFAULT_SIZES);
 
@@ -215,6 +218,8 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
     MemoryContextSwitchTo(mcxt);
     
     image_size = stride * height;
+    //total_size = image_size;
+    //total_size = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + image_size;
     image = (unsigned char* )palloc(image_size);
     if(NULL == image)
     {
@@ -228,14 +233,37 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
         MemoryContextDelete(mcxt);
         return NULL;
     }
-    n->std.flag     = SO_TYPE_IMAGE | SO_HINT_BITMAP;
-    n->std.next     = NULL;
-    n->std.data	    = image;
-    n->std.len      = image_size;
-    n->std.width    = (uint32_t)width;
-    n->std.height   = (uint32_t)height;
-    n->std.stride   = (uint32_t)stride;
+//    n->std.flag     = SO_TYPE_IMAGE | SO_HINT_BITMAP;
+//    n->std.next     = NULL;
+//    n->std.data	    = image;
+//    n->std.len      = total_size;
+//    n->std.width    = (uint32_t)width;
+//    n->std.height   = (uint32_t)height;
+//    n->std.stride   = (uint32_t)stride;
 
+#if 0
+    pF = (BITMAPFILEHEADER*)bmp;
+    pF->bfType = 0x4d42;
+    pF->bfSize = (DWORD)total_size;
+    pF->bfReserved1 = 0;
+    pF->bfReserved2 = 0;
+    pF->bfOffBits   = 0x36;
+
+    pI = (BITMAPINFOHEADER*)(bmp + sizeof(BITMAPFILEHEADER));
+    pI->biSize          = 0x28;
+    pI->biWidth         = width;
+    pI->biHeight        = height;
+    pI->biPlanes        = 0x01;
+    pI->biBitCount      = 0x20;
+    pI->biCompression   = BI_RGB;
+    pI->biSizeImage     = total_size - (sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER));
+    pI->biXPelsPerMeter = 0;
+    pI->biYPelsPerMeter = 0;
+    pI->biClrUsed       = 0;
+    pI->biClrImportant  = 0;
+
+    image = bmp + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+#endif
     for(int y = 0; y < height; y++)
     {
         const uint32_t* src = (uint32_t*)(data + stride * y);
@@ -256,6 +284,92 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
                 dst[x] = 0;
             }
         }
+    }
+
+    int len;
+    unsigned char *png = stbi_write_png_to_mem((const unsigned char *)image, stride, width, height, 4, &len);
+    if (png == NULL)
+    {
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    pfree(image);
+    image = (unsigned char* )palloc(len);
+    if(NULL == image)
+    {
+        free(png);
+        MemoryContextDelete(mcxt);        
+        return NULL;
+    }
+    memcpy(image, png, len);
+    free(png);
+    n->std.flag     = SO_TYPE_IMAGE;
+    n->std.next     = NULL;
+    n->std.data	    = image;
+    n->std.len      = len;
+
+    hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
+    if(FAILED(hr) || NULL == n->pStream)
+    {
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    hr = n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.len);
+    if(FAILED(hr))
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    hr = d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL,
+                            WICDecodeMetadataCacheOnLoad, &(n->pDecoder));
+
+    if(FAILED(hr) || NULL == n->pDecoder)
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        MemoryContextDelete(mcxt);
+        return 0;
+    }
+    hr = n->pDecoder->GetFrame(0, &(n->pFrame));
+    if(FAILED(hr) || NULL == n->pFrame)
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        n->pDecoder->Release();
+        n->pDecoder = NULL;
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
+    if(FAILED(hr) || NULL == n->pConverter)
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        n->pDecoder->Release();
+        n->pDecoder = NULL;
+        n->pFrame->Release();
+        n->pFrame = NULL;
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    hr = n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, 
+                            NULL, 0.0, WICBitmapPaletteTypeMedianCut);
+
+    if(FAILED(hr))
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        n->pDecoder->Release();
+        n->pDecoder = NULL;
+        n->pFrame->Release();
+        n->pFrame = NULL;
+        n->pConverter->Release();
+        n->pConverter = NULL;
+
+        MemoryContextDelete(mcxt);
+        return NULL;
     }
 
     return n;

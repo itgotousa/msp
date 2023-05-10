@@ -482,6 +482,7 @@ public:
 		HRESULT hr = S_OK;
 		ID2D1Bitmap* b = NULL;
 
+#if 0
 		if(n->std.flag | SO_HINT_BITMAP)
 		{
 			hr = m_pRenderTarget->CreateBitmap(
@@ -522,7 +523,7 @@ public:
 			
 			return;
 		}
-
+#endif 
 		if(NULL == n->pConverter) return;
 
 		if(fileGIF == d2d.ft)
