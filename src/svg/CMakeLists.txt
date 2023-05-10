@@ -1,7 +1,11 @@
 
-project(SVG)
+project(svg)
 
-add_library(${PROJECT_NAME} INTERFACE)
+file(GLOB SVGCORE_SRC "*.c")
 
-target_include_directories(${PROJECT_NAME} INTERFACE ${PROJECT_SOURCE_DIR})
+# add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME} ${SVGCORE_SRC})
+
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR})
+
 

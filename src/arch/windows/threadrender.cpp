@@ -1,8 +1,22 @@
 #include "stdafx.h"
 #include "pgcore.h"
+#include "stb_image_write.h"
+#include "plutovg-private.h"
+//#include "plutovg.h"
+#include "plutosvg.h"
 #include "svg.h"
 #include "resource.h"
 #include "mspwin.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 static HRESULT GetBackgroundColor(IWICMetadataQueryReader*, 
                         IWICBitmapDecoder*, D2D1_COLOR_F*);
@@ -212,7 +226,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             goto Quit_open_mspfile_thread;
         }
 
-        if(fileGIF == ft) {  n->am = GetAnimationMetaData(n->pDecoder); }
+        //if(fileGIF == ft) {  n->am = GetAnimationMetaData(n->pDecoder); }
 
         d2d.ft = ft;        
         m = d2d.pData;
@@ -235,13 +249,43 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     }
 
     ft = fileSVG;
+
+    p = (unsigned char*)malloc(size);
+    
+    if(NULL == p)
+    {
+        wp = UI_NOTIFY_FILEFAIL;
+        lp = 6;
+        goto Quit_open_mspfile_thread;
+    }
+
+    bytes = (unsigned int)_read(fd, p, size); /* read the entire PNG file into the buffer */
+
+    if (bytes != size) /* read error, since bytes != size */
+    {
+        free(p);
+        wp = UI_NOTIFY_FILEFAIL;
+        lp = 6;
+        goto Quit_open_mspfile_thread;
+    }
+
     if(fileSVG == ft)
     {
+        plutovg_surface_t* surface = plutosvg_load_from_memory((const char*)p, size, NULL, 0, 0, 96.0);
+        if(NULL == surface)
+        {
+            free(p);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
+        }
+
         mcxt = AllocSetContextCreate(TopMemoryContext,
                                     "SVGCxt",
                                     ALLOCSET_DEFAULT_SIZES);
         if(NULL == mcxt)
         {
+            free(p);
             wp = UI_NOTIFY_FILEFAIL;
             lp = 5;
             goto Quit_open_mspfile_thread;
@@ -249,15 +293,74 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         
         MemoryContextSwitchTo(mcxt);
 
-        D2DRenderNode n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
-        if(NULL == n)
+        unsigned char* data = surface->data;
+        int width = surface->width;
+        int height = surface->height;
+        int stride = surface->stride;
+        unsigned char* image = (unsigned char*)palloc((size_t)(stride * height));
+        if(NULL == image)
         {
+            free(p);
             MemoryContextDelete(mcxt);
             wp = UI_NOTIFY_FILEFAIL;
             lp = 8;
             goto Quit_open_mspfile_thread;
         }
 
+        for(int y = 0;y < height;y++)
+        {
+            const uint32_t* src = (uint32_t*)(data + stride * y);
+            uint32_t* dst = (uint32_t*)(image + stride * y);
+            for(int x = 0;x < width;x++)
+            {
+                uint32_t a = src[x] >> 24;
+                if(a != 0)
+                {
+                    uint32_t r = (((src[x] >> 16) & 0xff) * 255) / a;
+                    uint32_t g = (((src[x] >> 8) & 0xff) * 255) / a;
+                    uint32_t b = (((src[x] >> 0) & 0xff) * 255) / a;
+
+                    dst[x] = (a << 24) | (b << 16) | (g << 8) | r;
+                }
+                else
+                {
+                    dst[x] = 0;
+                }
+            }
+        }
+
+        int len;
+        unsigned char *png = stbi_write_png_to_mem((const unsigned char *)image, stride, width, width, 4, &len);
+        if (NULL == png)
+        {
+            free(p);
+            pfree(image);
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 8;
+            goto Quit_open_mspfile_thread;
+        }    
+
+        D2DRenderNode n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+        if(NULL == n)
+        {
+            free(p);
+            pfree(image);
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 8;
+            goto Quit_open_mspfile_thread;
+        }
+
+        //n->std.flag = SO_TYPE_GRAPHIC;
+        n->std.flag = SO_TYPE_IMAGE;
+        n->std.next = NULL;
+        n->std.data	= png;
+        n->std.len  = len;
+        free(p);
+        pfree(image);
+
+#if 0
         hr = d2d.pFactory->CreatePathGeometry(&(n->pGeometry));
         if(FAILED(hr) || NULL == n->pGeometry)
         {
@@ -289,8 +392,8 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         hr = pSink->Close();
         pSink->Release();
         pSink = NULL;
-
-        d2d.ft = ft;        
+#endif 
+        d2d.ft = filePNG;        
         m = d2d.pData;
 
         EnterCriticalSection(&(d2d.cs));

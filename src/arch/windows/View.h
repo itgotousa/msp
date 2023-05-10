@@ -404,6 +404,7 @@ public:
 			switch(ft)
 			{
 				case fileGIF	:
+#if 0				
 					ZeroMemory(&m_Am, sizeof(AnimationData));
 					EnterCriticalSection(&(d2d.cs));
 						n = d2d.pData;
@@ -422,6 +423,7 @@ public:
 						if(0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL)) m_timerStart = TRUE;
 						
 					}
+#endif 					
 				case filePNG	:
 				case fileJPG	:
 				case fileSVG	:

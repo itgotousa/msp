@@ -5,4 +5,4 @@ add_executable(${PROJECT_NAME} WIN32 msp.cpp stdafx.cpp threadrender.cpp msp.rc)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/wtl ${SVG_SOURCE_DIR} ${pgcore_SOURCE_DIR}/include)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC pgcore)
+target_link_libraries(${PROJECT_NAME} PUBLIC pgcore svg)
