@@ -40,8 +40,8 @@ static D2DRenderNode _read_png_file(TCHAR* path)
 	}
 
     _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
-    /* try to detect PNG header */
-    bytes = (unsigned int)_read(fd, png_magic, 8);
+    
+    bytes = (unsigned int)_read(fd, png_magic, 8);  /* try to detect PNG header */
     if(8 != bytes) 
     {
 	    _close(fd); 
@@ -54,33 +54,38 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     {
         ft = filePNG;
     }
-    if((0xff == p[0]) && (0xd8 == p[1]))
+
+    if((0xff == p[0]) && (0xd8 == p[1])) /* JPG head magic */
     {
         ft = fileJPG;
     }
+
+    if((0x42 == p[0]) && (0x4d == p[1])) /* BMP head magic */
+    {
+        bytes = *((unsigned int*)(p+2));
+        if(size == bytes) ft = fileBMP;
+    }
+
     if((0x47 == p[0]) && (0x49 == p[1]) && (0x46 == p[2]) && (0x38 == p[3]) && 
-        (0x39 == p[4]) && (0x61 == p[5]))
+        (0x39 == p[4]) && (0x61 == p[5]))  /* GIF head magic */
     {
         ft = fileGIF;
     }
 
 	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
-    if(filePNG != ft && fileJPG != ft && fileGIF == ft)
+    if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
     {
 	    _close(fd); 
 		return NULL;
     }
 
-    mcxt = AllocSetContextCreate(TopMemoryContext,
-                                "ImageCxt",
-                                ALLOCSET_DEFAULT_SIZES);
+    mcxt = AllocSetContextCreate(TopMemoryContext, "ImageCxt", ALLOCSET_DEFAULT_SIZES);
     if(NULL == mcxt)
     {
         _close(fd); 
         return NULL;
     }
-    
     MemoryContextSwitchTo(mcxt);
     
     p = (unsigned char*)palloc(size);
@@ -91,7 +96,7 @@ static D2DRenderNode _read_png_file(TCHAR* path)
         return NULL;
     }
 
-    bytes = (unsigned int)_read(fd, p, size); /* read the entire PNG file into the buffer */
+    bytes = (unsigned int)_read(fd, p, size); /* read the entire picture file into the buffer p */
     if (bytes != size) /* read error, since bytes != size */
     {
         MemoryContextDelete(mcxt);
@@ -123,11 +128,11 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     n->std.next = NULL;
     n->std.data	= p;
     n->std.len  = size;
+    //mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
 
     hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
     if(FAILED(hr) || NULL == n->pStream)
     {
-        mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
         MemoryContextDelete(mcxt);
         return NULL;
     }
@@ -136,7 +141,6 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     {
         n->pStream->Release();
         n->pStream = NULL;
-        mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
         MemoryContextDelete(mcxt);
         return NULL;
     }
@@ -147,7 +151,6 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     {
         n->pStream->Release();
         n->pStream = NULL;
-        mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
         MemoryContextDelete(mcxt);
         return 0;
     }
@@ -158,7 +161,6 @@ static D2DRenderNode _read_png_file(TCHAR* path)
         n->pStream = NULL;
         n->pDecoder->Release();
         n->pDecoder = NULL;
-        mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
         MemoryContextDelete(mcxt);
         return NULL;
     }
@@ -171,7 +173,6 @@ static D2DRenderNode _read_png_file(TCHAR* path)
         n->pDecoder = NULL;
         n->pFrame->Release();
         n->pFrame = NULL;
-        mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
         MemoryContextDelete(mcxt);
         return NULL;
     }
@@ -189,12 +190,74 @@ static D2DRenderNode _read_png_file(TCHAR* path)
         n->pConverter->Release();
         n->pConverter = NULL;
 
-        mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
         MemoryContextDelete(mcxt);
         return NULL;
     }
 
     //if(fileGIF == ft) {  n->am = GetAnimationMetaData(n->pDecoder); }
+    return n;
+}
+
+static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
+{
+    D2DRenderNode n = NULL;
+    MemoryContext mcxt = NULL;
+    unsigned char* data = surface->data;
+    int width = surface->width;
+    int height = surface->height;
+    int stride = surface->stride;
+    Size image_size;
+    unsigned char* image = NULL;
+
+    mcxt = AllocSetContextCreate(TopMemoryContext, "BmpCxt", ALLOCSET_DEFAULT_SIZES);
+
+    if(NULL == mcxt) return NULL;
+    MemoryContextSwitchTo(mcxt);
+    
+    image_size = stride * height;
+    image = (unsigned char* )palloc(image_size);
+    if(NULL == image)
+    {
+        MemoryContextDelete(mcxt);        
+        return NULL;
+    }
+
+    n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+    if(NULL == n)
+    {
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    n->std.flag     = SO_TYPE_IMAGE | SO_HINT_BITMAP;
+    n->std.next     = NULL;
+    n->std.data	    = image;
+    n->std.len      = image_size;
+    n->std.width    = (uint32_t)width;
+    n->std.height   = (uint32_t)height;
+    n->std.stride   = (uint32_t)stride;
+
+    for(int y = 0; y < height; y++)
+    {
+        const uint32_t* src = (uint32_t*)(data + stride * y);
+        uint32_t* dst = (uint32_t*)(image + stride * y);
+        for(int x = 0;x < width;x++)
+        {
+            uint32_t a = src[x] >> 24;
+            if(a != 0)
+            {
+                uint32_t r = (((src[x] >> 16) & 0xff) * 255) / a;
+                uint32_t g = (((src[x] >> 8) & 0xff) * 255) / a;
+                uint32_t b = (((src[x] >> 0) & 0xff) * 255) / a;
+
+                dst[x] = (a << 24) | (b << 16) | (g << 8) | r;
+            }
+            else
+            {
+                dst[x] = 0;
+            }
+        }
+    }
+
     return n;
 }
 
@@ -225,7 +288,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 
     n = _read_png_file(t->pfilePath);
 
-    if(NULL != n)
+    if(NULL != n) /* it is one PNG or JPG/GIF file */
     {
         d2d.ft = filePNG;
         m = d2d.pData;
@@ -241,7 +304,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
         return 0;
     }
-
+    /* now check if it is a md or svg file */
 	if (0 != _tsopen_s(&fd, t->pfilePath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
 	{
         wp = UI_NOTIFY_FILEFAIL;
@@ -253,7 +316,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     isOpened = TRUE;
 
 	size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
-	if (size > MAX_BUF_LEN) 
+	if (size > MAX_BUF_LEN || 0 == size) /* even it is one byte, it is still a valid md file */
 	{
         wp = UI_NOTIFY_FILEFAIL;
         lp = 2;
@@ -288,93 +351,24 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             goto Quit_open_mspfile_thread;
         }
 
-        plutovg_surface_write_to_png(surface, "c:\\temp\\svgextractx.png");
+        free(p); p = NULL;
+        _close(fd); isOpened = FALSE;
 
+        n = _compose_bitmap_data(surface);
+        
         plutovg_surface_destroy(surface);
-
-        n = _read_png_file(_T("c:\\temp\\svgextractx.png"));
-        if(NULL != n)
-        {
-            d2d.ft = filePNG;
-            m = d2d.pData;
-
-            EnterCriticalSection(&(d2d.cs));
-                d2d.pData = n;
-            LeaveCriticalSection(&(d2d.cs));
-            
-            ReleaseD2DResource(m);
-
-            wp = UI_NOTIFY_FILEOPEN;
-            lp = (LPARAM)filePNG;
-            goto Quit_open_mspfile_thread;
-        }
-
-        
-#if 0    
-        mcxt = AllocSetContextCreate(TopMemoryContext,
-                                    "SVGCxt",
-                                    ALLOCSET_DEFAULT_SIZES);
-        if(NULL == mcxt)
-        {
-            free(p); p = NULL;
-            wp = UI_NOTIFY_FILEFAIL;
-            lp = 5;
-            goto Quit_open_mspfile_thread;
-        }
-        
-        MemoryContextSwitchTo(mcxt);
-
-        D2DRenderNode n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
         if(NULL == n)
         {
-            free(p); p = NULL;
-            MemoryContextDelete(mcxt);
             wp = UI_NOTIFY_FILEFAIL;
-            lp = 8;
+            lp = 6;
             goto Quit_open_mspfile_thread;
         }
 
-        //n->std.flag = SO_TYPE_GRAPHIC;
-        n->std.flag = SO_TYPE_IMAGE;
-        n->std.next = NULL;
-        n->std.data	= png;
-        n->std.len  = len;
-        free(p);
-        pfree(image);
+//        plutovg_surface_write_to_png(surface, "c:\\temp\\svgextractx.png");
+//        plutovg_surface_destroy(surface);
+//        n = _read_png_file(_T("c:\\temp\\svgextractx.png"));
 
-        hr = d2d.pFactory->CreatePathGeometry(&(n->pGeometry));
-        if(FAILED(hr) || NULL == n->pGeometry)
-        {
-            MemoryContextDelete(mcxt);
-            wp = UI_NOTIFY_FILEFAIL;
-            lp = 7;
-            goto Quit_open_mspfile_thread;
-        }
-
-        n->std.flag = SO_TYPE_GRAPHIC;
-
-        ID2D1GeometrySink *pSink = NULL;
-        hr = n->pGeometry->Open(&pSink);
-        if (SUCCEEDED(hr))
-        {
-            pSink->SetFillMode(D2D1_FILL_MODE_WINDING);
-            pSink->BeginFigure(
-                D2D1::Point2F(10,10),
-                D2D1_FIGURE_BEGIN_HOLLOW
-                );
-            D2D1_POINT_2F points[] = {
-                D2D1::Point2F(110, 10),
-                D2D1::Point2F(110, 110),
-                };
-            pSink->AddLines(points, ARRAYSIZE(points));
-            pSink->EndFigure(D2D1_FIGURE_END_OPEN);    
-        }
-
-        hr = pSink->Close();
-        pSink->Release();
-        pSink = NULL;
-
-        d2d.ft = filePNG;        
+        d2d.ft = filePNG;
         m = d2d.pData;
 
         EnterCriticalSection(&(d2d.cs));
@@ -383,16 +377,10 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         
         ReleaseD2DResource(m);
 
-        if(NULL != m)
-        {
-            mcxt = *(MemoryContext *) (((char *) m) - sizeof(void *)); 
-            MemoryContextDelete(mcxt);
-        }
-
         wp = UI_NOTIFY_FILEOPEN;
-        lp = (LPARAM)ft;
+        lp = (LPARAM)fileBMP;
         goto Quit_open_mspfile_thread;
-#endif 
+
     }
 
 Quit_open_mspfile_thread:

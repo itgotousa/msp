@@ -425,6 +425,7 @@ public:
 					}
 #endif 					
 				case filePNG	:
+				case fileBMP	:
 				case fileJPG	:
 				case fileSVG	:
 					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
@@ -479,7 +480,48 @@ public:
 	void DrawSVGImage(D2DRenderNode n)
 	{
 		HRESULT hr = S_OK;
-		ID2D1Bitmap*	b = NULL;
+		ID2D1Bitmap* b = NULL;
+
+		if(n->std.flag | SO_HINT_BITMAP)
+		{
+			hr = m_pRenderTarget->CreateBitmap(
+				D2D1::SizeU(n->std.width, n->std.height),
+				n->std.data,
+				n->std.stride,
+				D2D1::BitmapProperties(
+					D2D1::PixelFormat(
+						DXGI_FORMAT_B8G8R8A8_UNORM,
+						D2D1_ALPHA_MODE_IGNORE
+					)
+				),
+				&b
+			);
+			if (SUCCEEDED(hr))
+			{
+				if(NULL != b) 
+				{
+					POINT pt;
+					if(!m_InitSize)
+					{
+						D2D1_SIZE_U s = b->GetPixelSize();
+						m_width 	= s.width;
+						m_height 	= s.height;
+						m_InitSize	= TRUE;
+						SetScrollSize(m_width, m_height);
+					}
+					GetScrollOffset(pt);
+					D2D1_RECT_F srcRect = D2D1::RectF(
+						static_cast<float>(-pt.x),
+						static_cast<float>(-pt.y),
+						static_cast<float>(m_width - pt.x),
+						static_cast<float>(m_height - pt.y));				
+					m_pRenderTarget->DrawBitmap(b, &srcRect);
+					SAFERELEASE(b);
+				}
+			}
+			
+			return;
+		}
 
 		if(NULL == n->pConverter) return;
 

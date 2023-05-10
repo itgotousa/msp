@@ -1,5 +1,5 @@
-#ifndef PLUTOSVG_H
-#define PLUTOSVG_H
+#ifndef __PLUTOSVG_H__
+#define __PLUTOSVG_H__
 
 #include "plutovg.h"
 
@@ -19,6 +19,7 @@ extern "C" {
  */
 plutovg_surface_t* plutosvg_load_from_memory(const char* data, int size, plutovg_font_t* font, int width, int height, double dpi);
 
+#if 0
 /**
  * @brief Load the image from a file on disk
  * @param filename - path of the image file to load
@@ -29,6 +30,7 @@ plutovg_surface_t* plutosvg_load_from_memory(const char* data, int size, plutovg
  * @return pointer to surface object on success, otherwise NULL
  */
 plutovg_surface_t* plutosvg_load_from_file(const char* filename, plutovg_font_t* font, int width, int height, double dpi);
+#endif 
 
 /**
  * @brief Get image dimensions from a file in memory
@@ -42,6 +44,7 @@ plutovg_surface_t* plutosvg_load_from_file(const char* filename, plutovg_font_t*
  */
 int plutosvg_dimensions_from_memory(const char* data, int size, plutovg_font_t* font, int* width, int* height, double dpi);
 
+#if 0
 /**
  * @brief Get image dimensions from a file on disk
  * @param filename - path of the image file to load
@@ -52,9 +55,10 @@ int plutosvg_dimensions_from_memory(const char* data, int size, plutovg_font_t* 
  * @return true on success, otherwise false
  */
 int plutosvg_dimensions_from_file(const char* filename, plutovg_font_t* font, int* width, int* height, double dpi);
+#endif 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // PLUTOSVG_H
+#endif /* __PLUTOSVG_H__ */

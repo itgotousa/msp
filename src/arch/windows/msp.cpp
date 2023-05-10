@@ -150,6 +150,7 @@ public:
 	}
 };
 
+/* release all D2D device independent resource and the whole memory pool */
 void ReleaseD2DResource(D2DRenderNode n)
 {
 	if(NULL == n) return;
@@ -192,7 +193,6 @@ void ReleaseD2DResource(D2DRenderNode n)
     }
 
 	MemoryContextDelete(mcxt);
-
 }
 
 static int InitInstance(HINSTANCE hInstance)

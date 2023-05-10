@@ -3201,6 +3201,7 @@ plutovg_surface_t* plutosvg_load_from_memory(const char* data, int size, plutovg
     return surface;
 }
 
+#if 0
 plutovg_surface_t* plutosvg_load_from_file(const char* filename, plutovg_font_t* font, int width, int height, double dpi)
 {
     FILE* fp = fopen(filename, "r");
@@ -3219,6 +3220,7 @@ plutovg_surface_t* plutosvg_load_from_file(const char* filename, plutovg_font_t*
     free(data);
     return surface;
 }
+#endif 
 
 int plutosvg_dimensions_from_memory(const char* data, int size, plutovg_font_t* font, int* width, int* height, double dpi)
 {
@@ -3235,6 +3237,7 @@ int plutosvg_dimensions_from_memory(const char* data, int size, plutovg_font_t* 
     return 1;
 }
 
+#if 0
 int plutosvg_dimensions_from_file(const char* filename, plutovg_font_t* font, int* width, int* height, double dpi)
 {
     FILE* fp = fopen(filename, "r");
@@ -3253,3 +3256,4 @@ int plutosvg_dimensions_from_file(const char* filename, plutovg_font_t* font, in
     free(data);
     return success;
 }
+#endif 

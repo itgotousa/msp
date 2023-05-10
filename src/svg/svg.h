@@ -10,6 +10,7 @@
 #define SO_TYPE_IMAGE       3
 
 #define SO_HINT_MATRIX      0x04
+#define SO_HINT_BITMAP      0x08
 
 typedef struct RenderNodeData *RenderNode;
 
@@ -19,7 +20,10 @@ typedef struct RenderNodeData
     RenderNode      next;
     uint8_t         type;
     void*           data;
-    uint32_t        len;
+    size_t          len;
+    uint32_t        width;
+    uint32_t        height;
+    uint32_t        stride;
     float           x, y;
     float           a,b,c,d,e,f;
 } RenderNodeData;

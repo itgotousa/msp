@@ -20,6 +20,7 @@ typedef enum
     fileSVG,
     filePNG,
     fileJPG,
+    fileBMP,
     fileGIF
 } fileType;
 
