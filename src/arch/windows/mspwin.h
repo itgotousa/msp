@@ -74,6 +74,7 @@ typedef struct D2DContextData
     fileType            ft;
     CRITICAL_SECTION    cs;
     D2DRenderNode       pData;
+    D2DRenderNode       pDataDefault;
 } D2DContextData;
 
 typedef struct
@@ -92,6 +93,7 @@ extern  D2DContextData d2d;
 
 extern void ReleaseD2DResource(D2DRenderNode n);
 
+void render_svg_logo(const char*);
 unsigned WINAPI open_mspfile_thread(LPVOID lpData);
 
 #endif /* __MSPWIN_H__ */

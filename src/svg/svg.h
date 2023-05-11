@@ -23,7 +23,7 @@ typedef struct RenderNodeData
     size_t          len;
     uint32_t        width;
     uint32_t        height;
-    uint32_t        stride;
+//    uint32_t        stride;
     float           x, y;
     float           a,b,c,d,e,f;
 } RenderNodeData;

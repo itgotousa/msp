@@ -75,6 +75,48 @@ public:
 
 	void DrawDefault()
 	{
+		D2DRenderNode n = d2d.pDataDefault;
+		HRESULT hr = S_OK;
+		ID2D1Bitmap* bmp = NULL;
+		if(NULL == n) return;
+		if(NULL == n->pConverter) return;
+
+		int x, y, width, height;
+		SIZE sz;
+		RECT rc;
+		GetClientRect(&rc);
+		GetScrollSize(sz);
+		if (sz.cx > rc.right)  rc.right = sz.cx;
+		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
+
+		width = n->std.width; height = n->std.height;
+		x = ((rc.right - rc.left - width) >> 1);
+		y = ((rc.bottom - rc.top - height) >> 1);
+		if(x < 0) x = 0; if(y < 0) y = 0;
+
+		hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
+		if(SUCCEEDED(hr))
+		{
+			m_pRenderTarget->BeginDraw();
+
+			m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+			m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
+			D2D1_RECT_F srcRect = D2D1::RectF(
+				static_cast<float>(x),
+				static_cast<float>(y),
+				static_cast<float>(x + width),
+				static_cast<float>(y + height));				
+			m_pRenderTarget->DrawBitmap(bmp, &srcRect);
+			bmp->Release();
+			bmp = NULL;
+
+			hr = m_pRenderTarget->EndDraw();
+			if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
+			{
+				m_pRenderTarget->Release();
+				m_pRenderTarget = NULL;
+			}			
+		}
 	}
 
 	void CalculateLayout()
@@ -429,6 +471,7 @@ public:
 				case fileJPG	:
 				case fileSVG	:
 					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
+					//SetScrollSize(m_width, m_height);
 					InvalidateRect(NULL);
 					UpdateWindow();
 					break;

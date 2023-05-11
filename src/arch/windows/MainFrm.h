@@ -108,7 +108,16 @@ public:
 
 		m_hWndClient = m_view.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, WS_EX_CLIENTEDGE);
 		// replace with appropriate values for the app
-		m_view.SetScrollSize(1, 1);
+		D2DRenderNode n = d2d.pDataDefault;
+		if(NULL != n)
+		{
+			m_view.SetScrollSize(n->std.width, n->std.height);
+		}
+		else 
+		{
+			m_view.SetScrollSize(1, 1);
+		}
+		
 
 		UIAddToolBar(hWndToolBar);
 		UISetCheck(ID_VIEW_TOOLBAR, 1);

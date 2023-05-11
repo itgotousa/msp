@@ -18,6 +18,81 @@ unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_byt
 }
 #endif
 
+static HRESULT _create_device_independance_D2D(D2DRenderNode n)
+{
+    HRESULT hr = E_FAIL;
+    MemoryContext mcxt = NULL;
+
+    if(NULL == n) return E_FAIL;
+    mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
+
+    hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
+    if(FAILED(hr) || NULL == n->pStream)
+    {
+        MemoryContextDelete(mcxt);
+        return hr;
+    }
+    hr = n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.len);
+    if(FAILED(hr))
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        MemoryContextDelete(mcxt);
+        return hr;
+    }
+    hr = d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL,
+                            WICDecodeMetadataCacheOnLoad, &(n->pDecoder));
+
+    if(FAILED(hr) || NULL == n->pDecoder)
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        MemoryContextDelete(mcxt);
+        return hr;
+    }
+    hr = n->pDecoder->GetFrame(0, &(n->pFrame));
+    if(FAILED(hr) || NULL == n->pFrame)
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        n->pDecoder->Release();
+        n->pDecoder = NULL;
+        MemoryContextDelete(mcxt);
+        return hr;
+    }
+    hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
+    if(FAILED(hr) || NULL == n->pConverter)
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        n->pDecoder->Release();
+        n->pDecoder = NULL;
+        n->pFrame->Release();
+        n->pFrame = NULL;
+        MemoryContextDelete(mcxt);
+        return hr;
+    }
+    hr = n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, 
+                            NULL, 0.0, WICBitmapPaletteTypeMedianCut);
+
+    if(FAILED(hr))
+    {
+        n->pStream->Release();
+        n->pStream = NULL;
+        n->pDecoder->Release();
+        n->pDecoder = NULL;
+        n->pFrame->Release();
+        n->pFrame = NULL;
+        n->pConverter->Release();
+        n->pConverter = NULL;
+
+        MemoryContextDelete(mcxt);
+        return hr;
+    }
+
+    return S_OK;
+}
+
 static D2DRenderNode _read_png_file(TCHAR* path)
 {
 	int             fd;
@@ -128,6 +203,16 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     n->std.next = NULL;
     n->std.data	= p;
     n->std.len  = size;
+
+    hr = _create_device_independance_D2D(n);
+    if(SUCCEEDED(hr)) 
+    {
+        return n;
+    }
+ 
+    return NULL;
+ 
+#if 0    
     //mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
 
     hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
@@ -193,14 +278,14 @@ static D2DRenderNode _read_png_file(TCHAR* path)
         MemoryContextDelete(mcxt);
         return NULL;
     }
-
+#endif 
     //if(fileGIF == ft) {  n->am = GetAnimationMetaData(n->pDecoder); }
-    return n;
+ //   return n;
 }
 
 STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len);
 
-static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
+static D2DRenderNode _compose_png_data(plutovg_surface_t* surface)
 {
     D2DRenderNode n = NULL;
     MemoryContext mcxt = NULL;
@@ -210,7 +295,6 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
     int stride = surface->stride;
     uint32_t image_size; //, total_size;
     unsigned char* image = NULL;
-    HRESULT hr = S_OK;
 
     mcxt = AllocSetContextCreate(TopMemoryContext, "BmpCxt", ALLOCSET_DEFAULT_SIZES);
 
@@ -218,8 +302,6 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
     MemoryContextSwitchTo(mcxt);
     
     image_size = stride * height;
-    //total_size = image_size;
-    //total_size = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + image_size;
     image = (unsigned char* )palloc(image_size);
     if(NULL == image)
     {
@@ -233,13 +315,6 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
         MemoryContextDelete(mcxt);
         return NULL;
     }
-//    n->std.flag     = SO_TYPE_IMAGE | SO_HINT_BITMAP;
-//    n->std.next     = NULL;
-//    n->std.data	    = image;
-//    n->std.len      = total_size;
-//    n->std.width    = (uint32_t)width;
-//    n->std.height   = (uint32_t)height;
-//    n->std.stride   = (uint32_t)stride;
 
 #if 0
     pF = (BITMAPFILEHEADER*)bmp;
@@ -307,7 +382,15 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
     n->std.next     = NULL;
     n->std.data	    = image;
     n->std.len      = len;
+    n->std.width    = width;
+    n->std.height   = height;
 
+    HRESULT hr = _create_device_independance_D2D(n);
+    if(SUCCEEDED(hr)) return n;
+
+    return NULL;
+
+#if 0    
     hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
     if(FAILED(hr) || NULL == n->pStream)
     {
@@ -373,6 +456,27 @@ static D2DRenderNode _compose_bitmap_data(plutovg_surface_t* surface)
     }
 
     return n;
+#endif     
+}
+
+void render_svg_logo(const char* logoSVG)
+{
+    plutovg_surface_t* surface;
+    
+    size_t size = strlen(logoSVG);
+
+    surface = plutosvg_load_from_memory(logoSVG, size, NULL, 0, 0, 96.0);
+    if(NULL == surface) return;
+
+    D2DRenderNode n = _compose_png_data(surface);
+
+    plutovg_surface_destroy(surface);
+
+    if(NULL == n) return;
+    d2d.ft = filePNG;
+    d2d.pDataDefault = n;
+   
+    ReleaseD2DResource(d2d.pData);
 }
 
 #if 0
@@ -468,7 +572,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         free(p); p = NULL;
         _close(fd); isOpened = FALSE;
 
-        n = _compose_bitmap_data(surface);
+        n = _compose_png_data(surface);
         
         plutovg_surface_destroy(surface);
         if(NULL == n)
@@ -477,10 +581,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             lp = 6;
             goto Quit_open_mspfile_thread;
         }
-
-//        plutovg_surface_write_to_png(surface, "c:\\temp\\svgextractx.png");
-//        plutovg_surface_destroy(surface);
-//        n = _read_png_file(_T("c:\\temp\\svgextractx.png"));
 
         d2d.ft = filePNG;
         m = d2d.pData;
