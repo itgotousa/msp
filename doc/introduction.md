@@ -22,20 +22,20 @@ MSP也可以显示以base64编码嵌入到svg中的png图片，如下所示：
 - SVG目前支持[SVG 1.1](https://www.w3.org/TR/2011/REC-SVG11-20110816/)标准
 - 考虑支持[Tiny VG](https://tinyvg.tech/)，其规范的pdf文档已经上传(tinyvg-specification.pdf)
 
-## 在Windows下的编译方法
+## 在Windows下的编译和运行软件的方法
 - 安装Visual Studio 2022 社区版，免费的，为微软的良心点赞。
-- 安装最新版的[CMake](https://cmake.org)，就是一个.exe文件，鼠标双击即可。
-- git clone https://github.com/itgotousa/msp.git 或下载本项目的zip包
-- 假设本项目的目录在D:\github\msp目录下，在其中建立一个build目录.
-- 打开Visual Studio 2022的X64 Native Tools Command Prompt for VS 2022窗口，切换到D:\github\msp\build目录。
-- 执行： cmake -G "NMake Makefiles" ../src
-- 执行： nmake 或nmake VERBOSE=1
-- 编译好的可执行文件是：D:\github\msp\build\arch\windows\msp-win64.exe
-
+- 安装最新版的[CMake](https://cmake.org)，就是一个.exe文件，鼠标双击即可。安装好cmake后，缺省它会把cmake的执行文件放在系统路径的环境变量中。打开一个dos窗口，执行cmake，应该可以看到cmake的一些信息。如果发现cmake无法找到，你可以自行查找cmake.exe的目录，加入到系统路径的环境变量中，或者使用绝对路径指定之。
+- 以上两步都是安装非常成熟的软件，非常容易，兄弟你大可不必头疼。
+- 下载本项目的zip包，或者使用git clone https://github.com/itgotousa/msp.git 拉一个下来。
+- 假设本项目的目录在D:\github\msp目录下。你随便找一个地方建立一个build目录，或者任何你喜欢的目录名字。假设你的目录是C:\temp\build
+- 打开Visual Studio 2022的X64 Native Tools Command Prompt for VS 2022窗口，切换到C:\temp\build目录，以下操作均在该目录下进行。
+- 执行： cmake -G "NMake Makefiles" D:\github\msp\src。如果想编译Release版本，可以使用cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release D:\github\msp\src
+- 执行：nmake 完成软件的编译。
+- 编译好的可执行文件是：D:\github\msp\build\arch\windows\msp-win64.exe，直接执行该exe即可。
 
 ***
 
-如果你在编译过程中出现问题，或者有兴趣一同开发，请联系itgotousa@gmail.com
+如果你在编译过程中出现问题，请联系itgotousa@gmail.com
 
 Enjoy coding, enjoy life!
 

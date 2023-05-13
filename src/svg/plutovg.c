@@ -77,7 +77,7 @@ int plutovg_surface_get_stride(const plutovg_surface_t* surface)
 {
     return surface->stride;
 }
-
+#if 0
 void plutovg_surface_write_to_png(const plutovg_surface_t* surface, const char* filename)
 {
     unsigned char* data = surface->data;
@@ -110,6 +110,7 @@ void plutovg_surface_write_to_png(const plutovg_surface_t* surface, const char* 
     stbi_write_png(filename, width, height, 4, image, stride);
     free(image);
 }
+#endif 
 
 plutovg_state_t* plutovg_state_create(void)
 {

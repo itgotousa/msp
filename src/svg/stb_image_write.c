@@ -148,7 +148,6 @@ LICENSE
 */
 #include "stb_image_write.h"
 
-
 #ifndef STB_IMAGE_WRITE_STATIC  // C++ forbids static forward declarations
 extern int stbi_write_tga_with_rle;
 extern int stbi_write_png_compression_level;
@@ -157,10 +156,6 @@ extern int stbi_write_force_png_filter;
 
 #ifndef STBI_WRITE_NO_STDIO
 STBIWDEF int stbi_write_png(char const *filename, int w, int h, int comp, const void  *data, int stride_in_bytes);
-STBIWDEF int stbi_write_bmp(char const *filename, int w, int h, int comp, const void  *data);
-STBIWDEF int stbi_write_tga(char const *filename, int w, int h, int comp, const void  *data);
-STBIWDEF int stbi_write_hdr(char const *filename, int w, int h, int comp, const float *data);
-STBIWDEF int stbi_write_jpg(char const *filename, int x, int y, int comp, const void  *data, int quality);
 
 #ifdef STBI_WINDOWS_UTF8
 STBIWDEF int stbiw_convert_wchar_to_utf8(char *buffer, size_t bufferlen, const wchar_t* input);
@@ -170,12 +165,8 @@ STBIWDEF int stbiw_convert_wchar_to_utf8(char *buffer, size_t bufferlen, const w
 typedef void stbi_write_func(void *context, void *data, int size);
 
 STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data, int stride_in_bytes);
-STBIWDEF int stbi_write_bmp_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data);
-STBIWDEF int stbi_write_tga_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data);
-STBIWDEF int stbi_write_hdr_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const float *data);
-STBIWDEF int stbi_write_jpg_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const void  *data, int quality);
 
-STBIWDEF void stbi_flip_vertically_on_write(int flip_boolean);
+//STBIWDEF void stbi_flip_vertically_on_write(int flip_boolean);
 
 //#ifdef STB_IMAGE_WRITE_IMPLEMENTATION
 
@@ -238,11 +229,12 @@ int stbi_write_tga_with_rle = 1;
 int stbi_write_force_png_filter = -1;
 #endif
 
+#if 0
 STBIWDEF void stbi_flip_vertically_on_write(int flag)
 {
    stbi__flip_vertically_on_write = flag;
 }
-
+#endif 
 typedef struct
 {
    stbi_write_func *func;
@@ -250,12 +242,13 @@ typedef struct
 } stbi__write_context;
 
 // initialize a callback-based context
+#if 0
 static void stbi__start_write_callbacks(stbi__write_context *s, stbi_write_func *c, void *context)
 {
    s->func    = c;
    s->context = context;
 }
-
+#endif 
 #ifndef STBI_WRITE_NO_STDIO
 
 static void stbi__stdio_write(void *context, void *data, int size)
@@ -305,7 +298,7 @@ static FILE *stbiw__fopen(char const *filename, char const *mode)
 #endif
    return f;
 }
-
+#if 0
 static int stbi__start_write_file(stbi__write_context *s, const char *filename)
 {
    FILE *f = stbiw__fopen(filename, "wb");
@@ -317,436 +310,11 @@ static void stbi__end_write_file(stbi__write_context *s)
 {
    fclose((FILE *)s->context);
 }
-
+#endif 
 #endif // !STBI_WRITE_NO_STDIO
 
 typedef unsigned int stbiw_uint32;
 typedef int stb_image_write_test[sizeof(stbiw_uint32)==4 ? 1 : -1];
-
-static void stbiw__writefv(stbi__write_context *s, const char *fmt, va_list v)
-{
-   while (*fmt) {
-      switch (*fmt++) {
-         case ' ': break;
-         case '1': { unsigned char x = STBIW_UCHAR(va_arg(v, int));
-                     s->func(s->context,&x,1);
-                     break; }
-         case '2': { int x = va_arg(v,int);
-                     unsigned char b[2];
-                     b[0] = STBIW_UCHAR(x);
-                     b[1] = STBIW_UCHAR(x>>8);
-                     s->func(s->context,b,2);
-                     break; }
-         case '4': { stbiw_uint32 x = va_arg(v,int);
-                     unsigned char b[4];
-                     b[0]=STBIW_UCHAR(x);
-                     b[1]=STBIW_UCHAR(x>>8);
-                     b[2]=STBIW_UCHAR(x>>16);
-                     b[3]=STBIW_UCHAR(x>>24);
-                     s->func(s->context,b,4);
-                     break; }
-         default:
-            STBIW_ASSERT(0);
-            return;
-      }
-   }
-}
-
-static void stbiw__writef(stbi__write_context *s, const char *fmt, ...)
-{
-   va_list v;
-   va_start(v, fmt);
-   stbiw__writefv(s, fmt, v);
-   va_end(v);
-}
-
-static void stbiw__putc(stbi__write_context *s, unsigned char c)
-{
-   s->func(s->context, &c, 1);
-}
-
-static void stbiw__write3(stbi__write_context *s, unsigned char a, unsigned char b, unsigned char c)
-{
-   unsigned char arr[3];
-   arr[0] = a; arr[1] = b; arr[2] = c;
-   s->func(s->context, arr, 3);
-}
-
-static void stbiw__write_pixel(stbi__write_context *s, int rgb_dir, int comp, int write_alpha, int expand_mono, unsigned char *d)
-{
-   unsigned char bg[3] = { 255, 0, 255}, px[3];
-   int k;
-
-   if (write_alpha < 0)
-      s->func(s->context, &d[comp - 1], 1);
-
-   switch (comp) {
-      case 2: // 2 pixels = mono + alpha, alpha is written separately, so same as 1-channel case
-      case 1:
-         if (expand_mono)
-            stbiw__write3(s, d[0], d[0], d[0]); // monochrome bmp
-         else
-            s->func(s->context, d, 1);  // monochrome TGA
-         break;
-      case 4:
-         if (!write_alpha) {
-            // composite against pink background
-            for (k = 0; k < 3; ++k)
-               px[k] = bg[k] + ((d[k] - bg[k]) * d[3]) / 255;
-            stbiw__write3(s, px[1 - rgb_dir], px[1], px[1 + rgb_dir]);
-            break;
-         }
-         /* FALLTHROUGH */
-      case 3:
-         stbiw__write3(s, d[1 - rgb_dir], d[1], d[1 + rgb_dir]);
-         break;
-   }
-   if (write_alpha > 0)
-      s->func(s->context, &d[comp - 1], 1);
-}
-
-static void stbiw__write_pixels(stbi__write_context *s, int rgb_dir, int vdir, int x, int y, int comp, void *data, int write_alpha, int scanline_pad, int expand_mono)
-{
-   stbiw_uint32 zero = 0;
-   int i,j, j_end;
-
-   if (y <= 0)
-      return;
-
-   if (stbi__flip_vertically_on_write)
-      vdir *= -1;
-
-   if (vdir < 0) {
-      j_end = -1; j = y-1;
-   } else {
-      j_end =  y; j = 0;
-   }
-
-   for (; j != j_end; j += vdir) {
-      for (i=0; i < x; ++i) {
-         unsigned char *d = (unsigned char *) data + (j*x+i)*comp;
-         stbiw__write_pixel(s, rgb_dir, comp, write_alpha, expand_mono, d);
-      }
-      s->func(s->context, &zero, scanline_pad);
-   }
-}
-
-static int stbiw__outfile(stbi__write_context *s, int rgb_dir, int vdir, int x, int y, int comp, int expand_mono, void *data, int alpha, int pad, const char *fmt, ...)
-{
-   if (y < 0 || x < 0) {
-      return 0;
-   } else {
-      va_list v;
-      va_start(v, fmt);
-      stbiw__writefv(s, fmt, v);
-      va_end(v);
-      stbiw__write_pixels(s,rgb_dir,vdir,x,y,comp,data,alpha,pad, expand_mono);
-      return 1;
-   }
-}
-
-static int stbi_write_bmp_core(stbi__write_context *s, int x, int y, int comp, const void *data)
-{
-   int pad = (-x*3) & 3;
-   return stbiw__outfile(s,-1,-1,x,y,comp,1,(void *) data,0,pad,
-           "11 4 22 4" "4 44 22 444444",
-           'B', 'M', 14+40+(x*3+pad)*y, 0,0, 14+40,  // file header
-            40, x,y, 1,24, 0,0,0,0,0,0);             // bitmap header
-}
-
-STBIWDEF int stbi_write_bmp_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const void *data)
-{
-   stbi__write_context s;
-   stbi__start_write_callbacks(&s, func, context);
-   return stbi_write_bmp_core(&s, x, y, comp, data);
-}
-
-#ifndef STBI_WRITE_NO_STDIO
-STBIWDEF int stbi_write_bmp(char const *filename, int x, int y, int comp, const void *data)
-{
-   stbi__write_context s;
-   if (stbi__start_write_file(&s,filename)) {
-      int r = stbi_write_bmp_core(&s, x, y, comp, data);
-      stbi__end_write_file(&s);
-      return r;
-   } else
-      return 0;
-}
-#endif //!STBI_WRITE_NO_STDIO
-
-static int stbi_write_tga_core(stbi__write_context *s, int x, int y, int comp, void *data)
-{
-   int has_alpha = (comp == 2 || comp == 4);
-   int colorbytes = has_alpha ? comp-1 : comp;
-   int format = colorbytes < 2 ? 3 : 2; // 3 color channels (RGB/RGBA) = 2, 1 color channel (Y/YA) = 3
-
-   if (y < 0 || x < 0)
-      return 0;
-
-   if (!stbi_write_tga_with_rle) {
-      return stbiw__outfile(s, -1, -1, x, y, comp, 0, (void *) data, has_alpha, 0,
-         "111 221 2222 11", 0, 0, format, 0, 0, 0, 0, 0, x, y, (colorbytes + has_alpha) * 8, has_alpha * 8);
-   } else {
-      int i,j,k;
-      int jend, jdir;
-
-      stbiw__writef(s, "111 221 2222 11", 0,0,format+8, 0,0,0, 0,0,x,y, (colorbytes + has_alpha) * 8, has_alpha * 8);
-
-      if (stbi__flip_vertically_on_write) {
-         j = 0;
-         jend = y;
-         jdir = 1;
-      } else {
-         j = y-1;
-         jend = -1;
-         jdir = -1;
-      }
-      for (; j != jend; j += jdir) {
-         unsigned char *row = (unsigned char *) data + j * x * comp;
-         int len;
-
-         for (i = 0; i < x; i += len) {
-            unsigned char *begin = row + i * comp;
-            int diff = 1;
-            len = 1;
-
-            if (i < x - 1) {
-               ++len;
-               diff = memcmp(begin, row + (i + 1) * comp, comp);
-               if (diff) {
-                  const unsigned char *prev = begin;
-                  for (k = i + 2; k < x && len < 128; ++k) {
-                     if (memcmp(prev, row + k * comp, comp)) {
-                        prev += comp;
-                        ++len;
-                     } else {
-                        --len;
-                        break;
-                     }
-                  }
-               } else {
-                  for (k = i + 2; k < x && len < 128; ++k) {
-                     if (!memcmp(begin, row + k * comp, comp)) {
-                        ++len;
-                     } else {
-                        break;
-                     }
-                  }
-               }
-            }
-
-            if (diff) {
-               unsigned char header = STBIW_UCHAR(len - 1);
-               s->func(s->context, &header, 1);
-               for (k = 0; k < len; ++k) {
-                  stbiw__write_pixel(s, -1, comp, has_alpha, 0, begin + k * comp);
-               }
-            } else {
-               unsigned char header = STBIW_UCHAR(len - 129);
-               s->func(s->context, &header, 1);
-               stbiw__write_pixel(s, -1, comp, has_alpha, 0, begin);
-            }
-         }
-      }
-   }
-   return 1;
-}
-
-STBIWDEF int stbi_write_tga_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const void *data)
-{
-   stbi__write_context s;
-   stbi__start_write_callbacks(&s, func, context);
-   return stbi_write_tga_core(&s, x, y, comp, (void *) data);
-}
-
-#ifndef STBI_WRITE_NO_STDIO
-STBIWDEF int stbi_write_tga(char const *filename, int x, int y, int comp, const void *data)
-{
-   stbi__write_context s;
-   if (stbi__start_write_file(&s,filename)) {
-      int r = stbi_write_tga_core(&s, x, y, comp, (void *) data);
-      stbi__end_write_file(&s);
-      return r;
-   } else
-      return 0;
-}
-#endif
-
-// *************************************************************************************************
-// Radiance RGBE HDR writer
-// by Baldur Karlsson
-
-#define stbiw__max(a, b)  ((a) > (b) ? (a) : (b))
-
-static void stbiw__linear_to_rgbe(unsigned char *rgbe, float *linear)
-{
-   int exponent;
-   float maxcomp = stbiw__max(linear[0], stbiw__max(linear[1], linear[2]));
-
-   if (maxcomp < 1e-32f) {
-      rgbe[0] = rgbe[1] = rgbe[2] = rgbe[3] = 0;
-   } else {
-      float normalize = (float) frexp(maxcomp, &exponent) * 256.0f/maxcomp;
-
-      rgbe[0] = (unsigned char)(linear[0] * normalize);
-      rgbe[1] = (unsigned char)(linear[1] * normalize);
-      rgbe[2] = (unsigned char)(linear[2] * normalize);
-      rgbe[3] = (unsigned char)(exponent + 128);
-   }
-}
-
-static void stbiw__write_run_data(stbi__write_context *s, int length, unsigned char databyte)
-{
-   unsigned char lengthbyte = STBIW_UCHAR(length+128);
-   STBIW_ASSERT(length+128 <= 255);
-   s->func(s->context, &lengthbyte, 1);
-   s->func(s->context, &databyte, 1);
-}
-
-static void stbiw__write_dump_data(stbi__write_context *s, int length, unsigned char *data)
-{
-   unsigned char lengthbyte = STBIW_UCHAR(length);
-   STBIW_ASSERT(length <= 128); // inconsistent with spec but consistent with official code
-   s->func(s->context, &lengthbyte, 1);
-   s->func(s->context, data, length);
-}
-
-static void stbiw__write_hdr_scanline(stbi__write_context *s, int width, int ncomp, unsigned char *scratch, float *scanline)
-{
-   unsigned char scanlineheader[4] = { 2, 2, 0, 0 };
-   unsigned char rgbe[4];
-   float linear[3];
-   int x;
-
-   scanlineheader[2] = (width&0xff00)>>8;
-   scanlineheader[3] = (width&0x00ff);
-
-   /* skip RLE for images too small or large */
-   if (width < 8 || width >= 32768) {
-      for (x=0; x < width; x++) {
-         switch (ncomp) {
-            case 4: /* fallthrough */
-            case 3: linear[2] = scanline[x*ncomp + 2];
-                    linear[1] = scanline[x*ncomp + 1];
-                    linear[0] = scanline[x*ncomp + 0];
-                    break;
-            default:
-                    linear[0] = linear[1] = linear[2] = scanline[x*ncomp + 0];
-                    break;
-         }
-         stbiw__linear_to_rgbe(rgbe, linear);
-         s->func(s->context, rgbe, 4);
-      }
-   } else {
-      int c,r;
-      /* encode into scratch buffer */
-      for (x=0; x < width; x++) {
-         switch(ncomp) {
-            case 4: /* fallthrough */
-            case 3: linear[2] = scanline[x*ncomp + 2];
-                    linear[1] = scanline[x*ncomp + 1];
-                    linear[0] = scanline[x*ncomp + 0];
-                    break;
-            default:
-                    linear[0] = linear[1] = linear[2] = scanline[x*ncomp + 0];
-                    break;
-         }
-         stbiw__linear_to_rgbe(rgbe, linear);
-         scratch[x + width*0] = rgbe[0];
-         scratch[x + width*1] = rgbe[1];
-         scratch[x + width*2] = rgbe[2];
-         scratch[x + width*3] = rgbe[3];
-      }
-
-      s->func(s->context, scanlineheader, 4);
-
-      /* RLE each component separately */
-      for (c=0; c < 4; c++) {
-         unsigned char *comp = &scratch[width*c];
-
-         x = 0;
-         while (x < width) {
-            // find first run
-            r = x;
-            while (r+2 < width) {
-               if (comp[r] == comp[r+1] && comp[r] == comp[r+2])
-                  break;
-               ++r;
-            }
-            if (r+2 >= width)
-               r = width;
-            // dump up to first run
-            while (x < r) {
-               int len = r-x;
-               if (len > 128) len = 128;
-               stbiw__write_dump_data(s, len, &comp[x]);
-               x += len;
-            }
-            // if there's a run, output it
-            if (r+2 < width) { // same test as what we break out of in search loop, so only true if we break'd
-               // find next byte after run
-               while (r < width && comp[r] == comp[x])
-                  ++r;
-               // output run up to r
-               while (x < r) {
-                  int len = r-x;
-                  if (len > 127) len = 127;
-                  stbiw__write_run_data(s, len, comp[x]);
-                  x += len;
-               }
-            }
-         }
-      }
-   }
-}
-
-static int stbi_write_hdr_core(stbi__write_context *s, int x, int y, int comp, float *data)
-{
-   if (y <= 0 || x <= 0 || data == NULL)
-      return 0;
-   else {
-      // Each component is stored separately. Allocate scratch space for full output scanline.
-      unsigned char *scratch = (unsigned char *) STBIW_MALLOC(x*4);
-      int i, len;
-      char buffer[128];
-      char header[] = "#?RADIANCE\n# Written by stb_image_write.h\nFORMAT=32-bit_rle_rgbe\n";
-      s->func(s->context, header, sizeof(header)-1);
-
-#ifdef __STDC_WANT_SECURE_LIB__
-      len = sprintf_s(buffer, sizeof(buffer), "EXPOSURE=          1.0000000000000\n\n-Y %d +X %d\n", y, x);
-#else
-      len = sprintf(buffer, "EXPOSURE=          1.0000000000000\n\n-Y %d +X %d\n", y, x);
-#endif
-      s->func(s->context, buffer, len);
-
-      for(i=0; i < y; i++)
-         stbiw__write_hdr_scanline(s, x, comp, scratch, data + comp*x*(stbi__flip_vertically_on_write ? y-1-i : i));
-      STBIW_FREE(scratch);
-      return 1;
-   }
-}
-
-STBIWDEF int stbi_write_hdr_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const float *data)
-{
-   stbi__write_context s;
-   stbi__start_write_callbacks(&s, func, context);
-   return stbi_write_hdr_core(&s, x, y, comp, (float *) data);
-}
-
-#ifndef STBI_WRITE_NO_STDIO
-STBIWDEF int stbi_write_hdr(char const *filename, int x, int y, int comp, const float *data)
-{
-   stbi__write_context s;
-   if (stbi__start_write_file(&s,filename)) {
-      int r = stbi_write_hdr_core(&s, x, y, comp, (float *) data);
-      stbi__end_write_file(&s);
-      return r;
-   } else
-      return 0;
-}
-#endif // STBI_WRITE_NO_STDIO
-
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // PNG writer
@@ -1142,23 +710,6 @@ STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int s
    return out;
 }
 
-#ifndef STBI_WRITE_NO_STDIO
-STBIWDEF int stbi_write_png(char const *filename, int x, int y, int comp, const void *data, int stride_bytes)
-{
-   FILE *f;
-   int len;
-   unsigned char *png = stbi_write_png_to_mem((const unsigned char *) data, stride_bytes, x, y, comp, &len);
-   if (png == NULL) return 0;
-
-   f = stbiw__fopen(filename, "wb");
-   if (!f) { STBIW_FREE(png); return 0; }
-   fwrite(png, 1, len, f);
-   fclose(f);
-   STBIW_FREE(png);
-   return 1;
-}
-#endif
-
 STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const void *data, int stride_bytes)
 {
    int len;
@@ -1213,46 +764,4 @@ STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int x,
       0.91 (2010-07-17)
              first public release
       0.90   first internal release
-*/
-
-/*
-------------------------------------------------------------------------------
-This software is available under 2 licenses -- choose whichever you prefer.
-------------------------------------------------------------------------------
-ALTERNATIVE A - MIT License
-Copyright (c) 2017 Sean Barrett
-Permission is hereby granted, free of charge, to any person obtaining a copy of 
-this software and associated documentation files (the "Software"), to deal in 
-the Software without restriction, including without limitation the rights to 
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
-of the Software, and to permit persons to whom the Software is furnished to do 
-so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in all 
-copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
-SOFTWARE.
-------------------------------------------------------------------------------
-ALTERNATIVE B - Public Domain (www.unlicense.org)
-This is free and unencumbered software released into the public domain.
-Anyone is free to copy, modify, publish, use, compile, sell, or distribute this 
-software, either in source code form or as a compiled binary, for any purpose, 
-commercial or non-commercial, and by any means.
-In jurisdictions that recognize copyright laws, the author or authors of this 
-software dedicate any and all copyright interest in the software to the public 
-domain. We make this dedication for the benefit of the public at large and to 
-the detriment of our heirs and successors. We intend this dedication to be an 
-overt act of relinquishment in perpetuity of all present and future rights to 
-this software under copyright law.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
-AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN 
-ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION 
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-------------------------------------------------------------------------------
 */
