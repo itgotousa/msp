@@ -1,15 +1,11 @@
 #include "plutovg-private.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
 plutovg_surface_t* plutovg_surface_create(int width, int height)
 {
     plutovg_surface_t* surface = malloc(sizeof(plutovg_surface_t));
     surface->ref = 1;
     surface->owndata = 1;
-    surface->data = malloc((size_t)(width * height * 4));
-    memset(surface->data, 0, (size_t)(width * height * 4));
+    surface->data = calloc(1, (size_t)(width * height * 4));
     surface->width = width;
     surface->height = height;
     surface->stride = width * 4;
@@ -30,9 +26,6 @@ plutovg_surface_t* plutovg_surface_create_for_data(unsigned char* data, int widt
 
 plutovg_surface_t* plutovg_surface_reference(plutovg_surface_t* surface)
 {
-    if(surface==NULL)
-        return NULL;
-
     ++surface->ref;
     return surface;
 }
@@ -52,9 +45,6 @@ void plutovg_surface_destroy(plutovg_surface_t* surface)
 
 int plutovg_surface_get_reference_count(const plutovg_surface_t* surface)
 {
-    if(surface==NULL)
-        return 0;
-
     return surface->ref;
 }
 
@@ -77,47 +67,12 @@ int plutovg_surface_get_stride(const plutovg_surface_t* surface)
 {
     return surface->stride;
 }
-#if 0
-void plutovg_surface_write_to_png(const plutovg_surface_t* surface, const char* filename)
-{
-    unsigned char* data = surface->data;
-    int width = surface->width;
-    int height = surface->height;
-    int stride = surface->stride;
-    unsigned char* image = malloc((size_t)(stride * height));
-    for(int y = 0;y < height;y++)
-    {
-        const uint32_t* src = (uint32_t*)(data + stride * y);
-        uint32_t* dst = (uint32_t*)(image + stride * y);
-        for(int x = 0;x < width;x++)
-        {
-            uint32_t a = src[x] >> 24;
-            if(a != 0)
-            {
-                uint32_t r = (((src[x] >> 16) & 0xff) * 255) / a;
-                uint32_t g = (((src[x] >> 8) & 0xff) * 255) / a;
-                uint32_t b = (((src[x] >> 0) & 0xff) * 255) / a;
-
-                dst[x] = (a << 24) | (b << 16) | (g << 8) | r;
-            }
-            else
-            {
-                dst[x] = 0;
-            }
-        }
-    }
-
-    stbi_write_png(filename, width, height, 4, image, stride);
-    free(image);
-}
-#endif 
 
 plutovg_state_t* plutovg_state_create(void)
 {
     plutovg_state_t* state = malloc(sizeof(plutovg_state_t));
     state->clippath = NULL;
-    state->font = NULL;
-    state->source = plutovg_paint_create_rgb(0, 0, 0);
+    plutovg_paint_init(&state->paint);
     plutovg_matrix_init_identity(&state->matrix);
     state->winding = plutovg_fill_rule_non_zero;
     state->stroke.width = 1.0;
@@ -126,7 +81,6 @@ plutovg_state_t* plutovg_state_create(void)
     state->stroke.join = plutovg_line_join_miter;
     state->stroke.dash = NULL;
     state->op = plutovg_operator_src_over;
-    state->fontsize = 12.0;
     state->opacity = 1.0;
     state->next = NULL;
     return state;
@@ -134,10 +88,9 @@ plutovg_state_t* plutovg_state_create(void)
 
 plutovg_state_t* plutovg_state_clone(const plutovg_state_t* state)
 {
-    plutovg_state_t* newstate = malloc(sizeof(plutovg_state_t));
+    plutovg_state_t* newstate = plutovg_state_create();
     newstate->clippath = plutovg_rle_clone(state->clippath);
-    newstate->font = plutovg_font_reference(state->font);
-    newstate->source = plutovg_paint_reference(state->source); /** FIXME: clone!!?**/
+    plutovg_paint_copy(&newstate->paint, &state->paint);
     newstate->matrix = state->matrix;
     newstate->winding = state->winding;
     newstate->stroke.width = state->stroke.width;
@@ -146,7 +99,6 @@ plutovg_state_t* plutovg_state_clone(const plutovg_state_t* state)
     newstate->stroke.join = state->stroke.join;
     newstate->stroke.dash = plutovg_dash_clone(state->stroke.dash);
     newstate->op = state->op;
-    newstate->fontsize = state->fontsize;
     newstate->opacity = state->opacity;
     newstate->next = NULL;
     return newstate;
@@ -155,8 +107,7 @@ plutovg_state_t* plutovg_state_clone(const plutovg_state_t* state)
 void plutovg_state_destroy(plutovg_state_t* state)
 {
     plutovg_rle_destroy(state->clippath);
-    plutovg_font_destroy(state->font);
-    plutovg_paint_destroy(state->source);
+    plutovg_paint_destroy(&state->paint);
     plutovg_dash_destroy(state->stroke.dash);
     free(state);
 }
@@ -174,14 +125,13 @@ plutovg_t* plutovg_create(plutovg_surface_t* surface)
     pluto->clip.y = 0.0;
     pluto->clip.w = surface->width;
     pluto->clip.h = surface->height;
+    pluto->outline_data = NULL;
+    pluto->outline_size = 0;
     return pluto;
 }
 
 plutovg_t* plutovg_reference(plutovg_t* pluto)
 {
-    if(pluto==NULL)
-        return NULL;
-
     ++pluto->ref;
     return pluto;
 }
@@ -204,15 +154,13 @@ void plutovg_destroy(plutovg_t* pluto)
         plutovg_path_destroy(pluto->path);
         plutovg_rle_destroy(pluto->rle);
         plutovg_rle_destroy(pluto->clippath);
+        free(pluto->outline_data);
         free(pluto);
     }
 }
 
 int plutovg_get_reference_count(const plutovg_t* pluto)
 {
-    if(pluto==NULL)
-        return 0;
-
     return pluto->ref;
 }
 
@@ -230,58 +178,53 @@ void plutovg_restore(plutovg_t* pluto)
     plutovg_state_destroy(oldstate);
 }
 
-void plutovg_set_source_rgb(plutovg_t* pluto, double r, double g, double b)
+plutovg_color_t* plutovg_set_rgb(plutovg_t* pluto, double r, double g, double b)
 {
-    plutovg_set_source_rgba(pluto, r, g, b, 1.0);
+    return plutovg_set_rgba(pluto, r, g, b, 1.0);
 }
 
-void plutovg_set_source_rgba(plutovg_t* pluto, double r, double g, double b, double a)
+plutovg_color_t* plutovg_set_rgba(plutovg_t* pluto, double r, double g, double b, double a)
 {
-    plutovg_paint_t* source = plutovg_paint_create_rgba(r, g, b, a);
-    plutovg_set_source(pluto, source);
-    plutovg_paint_destroy(source);
+    plutovg_paint_t* paint = &pluto->state->paint;
+    paint->type = plutovg_paint_type_color;
+    plutovg_color_init_rgba(&paint->color, r, g, b, a);
+    return &paint->color;
 }
 
-void plutovg_set_source_surface(plutovg_t* pluto, plutovg_surface_t* surface, double x, double y)
+plutovg_color_t* plutovg_set_color(plutovg_t* pluto, const plutovg_color_t* color)
 {
-    plutovg_paint_t* source = plutovg_paint_create_for_surface(surface);
-    plutovg_texture_t* texture = plutovg_paint_get_texture(source);
-    plutovg_matrix_t matrix;
-    plutovg_matrix_init_translate(&matrix, x, y);
-    plutovg_texture_set_matrix(texture, &matrix);
-    plutovg_set_source(pluto, source);
-    plutovg_paint_destroy(source);
+    return plutovg_set_rgba(pluto, color->r, color->g, color->b, color->a);
 }
 
-void plutovg_set_source_color(plutovg_t* pluto, const plutovg_color_t* color)
+plutovg_gradient_t* plutovg_set_linear_gradient(plutovg_t* pluto, double x1, double y1, double x2, double y2)
 {
-    plutovg_set_source_rgba(pluto, color->r, color->g, color->b, color->a);
+    plutovg_paint_t* paint = &pluto->state->paint;
+    paint->type = plutovg_paint_type_gradient;
+    plutovg_gradient_init_linear(&paint->gradient, x1, y1, x2, y2);
+    return &paint->gradient;
 }
 
-void plutovg_set_source_gradient(plutovg_t* pluto, plutovg_gradient_t* gradient)
+plutovg_gradient_t* plutovg_set_radial_gradient(plutovg_t* pluto, double cx, double cy, double cr, double fx, double fy, double fr)
 {
-    plutovg_paint_t* source = plutovg_paint_create_gradient(gradient);
-    plutovg_set_source(pluto, source);
-    plutovg_paint_destroy(source);
+    plutovg_paint_t* paint = &pluto->state->paint;
+    paint->type = plutovg_paint_type_gradient;
+    plutovg_gradient_init_radial(&paint->gradient, cx, cy, cr, fx, fy, fr);
+    return &paint->gradient;
 }
 
-void plutovg_set_source_texture(plutovg_t* pluto, plutovg_texture_t* texture)
+plutovg_texture_t* plutovg_set_texture_surface(plutovg_t* pluto, plutovg_surface_t* surface, double x, double y)
 {
-    plutovg_paint_t* source = plutovg_paint_create_texture(texture);
-    plutovg_set_source(pluto, source);
-    plutovg_paint_destroy(source);
+    plutovg_texture_t* texture = plutovg_set_texture(pluto, surface, plutovg_texture_type_plain);
+    plutovg_matrix_init_translate(&texture->matrix, x, y);
+    return texture;
 }
 
-void plutovg_set_source(plutovg_t* pluto, plutovg_paint_t* source)
+plutovg_texture_t* plutovg_set_texture(plutovg_t* pluto, plutovg_surface_t* surface, plutovg_texture_type_t type)
 {
-    source = plutovg_paint_reference(source);
-    plutovg_paint_destroy(pluto->state->source);
-    pluto->state->source = source;
-}
-
-plutovg_paint_t* plutovg_get_source(const plutovg_t* pluto)
-{
-    return pluto->state->source;
+    plutovg_paint_t* paint = &pluto->state->paint;
+    paint->type = plutovg_paint_type_texture;
+    plutovg_texture_init(&paint->texture, surface, type);
+    return &paint->texture;
 }
 
 void plutovg_set_operator(plutovg_t* pluto, plutovg_operator_t op)
@@ -291,12 +234,12 @@ void plutovg_set_operator(plutovg_t* pluto, plutovg_operator_t op)
 
 void plutovg_set_opacity(plutovg_t* pluto, double opacity)
 {
-    pluto->state->opacity = CLAMP(opacity, 0.0, 1.0);
+    pluto->state->opacity = opacity;
 }
 
-void plutovg_set_fill_rule(plutovg_t* pluto, plutovg_fill_rule_t winding)
+void plutovg_set_fill_rule(plutovg_t* pluto, plutovg_fill_rule_t fill_rule)
 {
-    pluto->state->winding = winding;
+    pluto->state->winding = fill_rule;
 }
 
 plutovg_operator_t plutovg_get_operator(const plutovg_t* pluto)
@@ -360,24 +303,6 @@ double plutovg_get_miter_limit(const plutovg_t* pluto)
     return pluto->state->stroke.miterlimit;
 }
 
-double plutovg_get_dash_offset(plutovg_t* pluto)
-{
-    plutovg_stroke_data_t* stroke = &pluto->state->stroke;
-    return stroke->dash ? stroke->dash->offset : 0.0;
-}
-
-double* plutovg_get_dash_data(plutovg_t* pluto)
-{
-    plutovg_stroke_data_t* stroke = &pluto->state->stroke;
-    return stroke->dash ? stroke->dash->data : NULL;
-}
-
-int plutovg_get_dash_count(plutovg_t* pluto)
-{
-    plutovg_stroke_data_t* stroke = &pluto->state->stroke;
-    return stroke->dash ? stroke->dash->size : 0;
-}
-
 void plutovg_translate(plutovg_t* pluto, double x, double y)
 {
     plutovg_matrix_translate(&pluto->state->matrix, x, y);
@@ -388,9 +313,9 @@ void plutovg_scale(plutovg_t* pluto, double x, double y)
     plutovg_matrix_scale(&pluto->state->matrix, x, y);
 }
 
-void plutovg_rotate(plutovg_t* pluto, double radians)
+void plutovg_rotate(plutovg_t* pluto, double radians, double x, double y)
 {
-    plutovg_matrix_rotate(&pluto->state->matrix, radians);
+    plutovg_matrix_rotate(&pluto->state->matrix, radians, x, y);
 }
 
 void plutovg_transform(plutovg_t* pluto, const plutovg_matrix_t* matrix)
@@ -400,7 +325,7 @@ void plutovg_transform(plutovg_t* pluto, const plutovg_matrix_t* matrix)
 
 void plutovg_set_matrix(plutovg_t* pluto, const plutovg_matrix_t* matrix)
 {
-    memcpy(&pluto->state->matrix, matrix, sizeof(plutovg_matrix_t));
+    pluto->state->matrix = *matrix;
 }
 
 void plutovg_identity_matrix(plutovg_t* pluto)
@@ -410,7 +335,7 @@ void plutovg_identity_matrix(plutovg_t* pluto)
 
 void plutovg_get_matrix(const plutovg_t* pluto, plutovg_matrix_t* matrix)
 {
-    memcpy(matrix, &pluto->state->matrix, sizeof(plutovg_matrix_t));
+    *matrix = pluto->state->matrix;
 }
 
 void plutovg_move_to(plutovg_t* pluto, double x, double y)
@@ -473,11 +398,6 @@ void plutovg_circle(plutovg_t* pluto, double cx, double cy, double r)
     plutovg_ellipse(pluto, cx, cy, r, r);
 }
 
-void plutovg_arc(plutovg_t* pluto, double cx, double cy, double r, double a0, double a1, int ccw)
-{
-    plutovg_path_add_arc(pluto->path, cx, cy, r, a0, a1, ccw);
-}
-
 void plutovg_add_path(plutovg_t* pluto, const plutovg_path_t* path)
 {
     plutovg_path_add_path(pluto->path, path, NULL);
@@ -493,146 +413,9 @@ void plutovg_close_path(plutovg_t* pluto)
     plutovg_path_close(pluto->path);
 }
 
-void plutovg_get_current_point(const plutovg_t* pluto, double* x, double* y)
-{
-    plutovg_path_get_current_point(pluto->path, x, y);
-}
-
 plutovg_path_t* plutovg_get_path(const plutovg_t* pluto)
 {
     return pluto->path;
-}
-
-void plutovg_set_font(plutovg_t* pluto, plutovg_font_t* font)
-{
-    font = plutovg_font_reference(font);
-    plutovg_font_destroy(pluto->state->font);
-    pluto->state->font = font;
-}
-
-void plutovg_set_font_size(plutovg_t* pluto, double size)
-{
-    pluto->state->fontsize = size;
-}
-
-plutovg_font_t* plutovg_get_font(const plutovg_t* pluto)
-{
-    return pluto->state->font;
-}
-
-double plutovg_get_font_size(const plutovg_t* pluto)
-{
-    return pluto->state->fontsize;
-}
-
-static inline int decode_utf8(const char** begin, const char* end, uint32_t* codepoint)
-{
-    static const int trailing[256] =
-    {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5
-    };
-
-    static const uint32_t offsets[6] =
-    {
-        0x00000000, 0x00003080, 0x000E2080, 0x03C82080, 0xFA082080, 0x82082080
-    };
-
-    const char* ptr = *begin;
-    int trailing_bytes = trailing[(uint8_t)(*ptr)];
-    if(ptr + trailing_bytes >= end)
-        return 0;
-
-    uint32_t output = 0;
-    switch(trailing_bytes)
-    {
-    case 5: output += (uint8_t)(*ptr++); output <<= 6;
-    case 4: output += (uint8_t)(*ptr++); output <<= 6;
-    case 3: output += (uint8_t)(*ptr++); output <<= 6;
-    case 2: output += (uint8_t)(*ptr++); output <<= 6;
-    case 1: output += (uint8_t)(*ptr++); output <<= 6;
-    case 0: output += (uint8_t)(*ptr++);
-    }
-
-    output -= offsets[trailing_bytes];
-    *begin = ptr;
-    *codepoint = output;
-    return 1;
-}
-
-void plutovg_text(plutovg_t* pluto, const char* utf8, double x, double y)
-{
-    plutovg_state_t* state = pluto->state;
-    if(state->font == NULL)
-        return;
-
-    const char* end = utf8 + strlen(utf8);
-    uint32_t codepoint = 0;
-    double scale = plutovg_font_get_scale(state->font, state->fontsize);
-    plutovg_matrix_t matrix;
-    while(utf8 < end)
-    {
-        if(!decode_utf8(&utf8, end, &codepoint))
-            return;
-
-        plutovg_matrix_init_translate(&matrix, x, y);
-        plutovg_matrix_scale(&matrix, scale, -scale);
-
-        const plutovg_glyph_t* glyph = plutovg_font_get_glyph(state->font, (int)codepoint);
-        const plutovg_path_t* path = plutovg_glyph_get_path(glyph);
-        plutovg_path_add_path(pluto->path, path, &matrix);
-
-        x += plutovg_glyph_get_advance(glyph) * scale;
-    }
-}
-
-void plutovg_char(plutovg_t* pluto, int ch, double x, double y)
-{
-    plutovg_state_t* state = pluto->state;
-    if(state->font == NULL)
-        return;
-
-    double scale = plutovg_font_get_scale(state->font, state->fontsize);
-
-    plutovg_matrix_t matrix;
-    plutovg_matrix_init_translate(&matrix, x, y);
-    plutovg_matrix_scale(&matrix, scale, -scale);
-
-    const plutovg_glyph_t* glyph = plutovg_font_get_glyph(state->font, ch);
-    const plutovg_path_t* path = plutovg_glyph_get_path(glyph);
-    plutovg_path_add_path(pluto->path, path, &matrix);
-}
-
-void plutovg_text_extents(plutovg_t* pluto, const char* utf8, double* w, double* h)
-{
-    if(w) *w = 0;
-    if(h) *h = 0;
-
-    plutovg_state_t* state = pluto->state;
-    if(state->font == NULL)
-        return;
-
-    const char* end = utf8 + strlen(utf8);
-    uint32_t codepoint = 0;
-    double scale = plutovg_font_get_scale(state->font, state->fontsize);
-    double x = 0;
-    while(utf8 < end)
-    {
-        if(!decode_utf8(&utf8, end, &codepoint))
-            return;
-
-        const plutovg_glyph_t* glyph = plutovg_font_get_glyph(state->font, (int)codepoint);
-        x += plutovg_glyph_get_advance(glyph) * scale;
-    }
-
-    if(w) *w = x;
-    if(h) *h = plutovg_font_get_leading(state->font) * scale;
 }
 
 void plutovg_fill(plutovg_t* pluto)
@@ -663,7 +446,7 @@ void plutovg_paint(plutovg_t* pluto)
         plutovg_matrix_t matrix;
         plutovg_matrix_init_identity(&matrix);
         pluto->clippath = plutovg_rle_create();
-        plutovg_rle_rasterize(pluto->clippath, path, &matrix, &pluto->clip, NULL, plutovg_fill_rule_non_zero);
+        plutovg_rle_rasterize(pluto, pluto->clippath, path, &matrix, &pluto->clip, NULL, plutovg_fill_rule_non_zero);
         plutovg_path_destroy(path);
     }
 
@@ -675,7 +458,7 @@ void plutovg_fill_preserve(plutovg_t* pluto)
 {
     plutovg_state_t* state = pluto->state;
     plutovg_rle_clear(pluto->rle);
-    plutovg_rle_rasterize(pluto->rle, pluto->path, &state->matrix, &pluto->clip, NULL, state->winding);
+    plutovg_rle_rasterize(pluto, pluto->rle, pluto->path, &state->matrix, &pluto->clip, NULL, state->winding);
     plutovg_rle_clip_path(pluto->rle, state->clippath);
     plutovg_blend(pluto, pluto->rle);
 }
@@ -684,7 +467,7 @@ void plutovg_stroke_preserve(plutovg_t* pluto)
 {
     plutovg_state_t* state = pluto->state;
     plutovg_rle_clear(pluto->rle);
-    plutovg_rle_rasterize(pluto->rle, pluto->path, &state->matrix, &pluto->clip, &state->stroke, plutovg_fill_rule_non_zero);
+    plutovg_rle_rasterize(pluto, pluto->rle, pluto->path, &state->matrix, &pluto->clip, &state->stroke, plutovg_fill_rule_non_zero);
     plutovg_rle_clip_path(pluto->rle, state->clippath);
     plutovg_blend(pluto, pluto->rle);
 }
@@ -695,45 +478,14 @@ void plutovg_clip_preserve(plutovg_t* pluto)
     if(state->clippath)
     {
         plutovg_rle_clear(pluto->rle);
-        plutovg_rle_rasterize(pluto->rle, pluto->path, &state->matrix, &pluto->clip, NULL, state->winding);
+        plutovg_rle_rasterize(pluto, pluto->rle, pluto->path, &state->matrix, &pluto->clip, NULL, state->winding);
         plutovg_rle_clip_path(state->clippath, pluto->rle);
     }
     else
     {
         state->clippath = plutovg_rle_create();
-        plutovg_rle_rasterize(state->clippath, pluto->path, &state->matrix, &pluto->clip, NULL, state->winding);
+        plutovg_rle_rasterize(pluto, state->clippath, pluto->path, &state->matrix, &pluto->clip, NULL, state->winding);
     }
-}
-
-void plutovg_fill_extents(plutovg_t* pluto, double* x, double* y, double* w, double* h)
-{
-    plutovg_state_t* state = pluto->state;
-    plutovg_rle_clear(pluto->rle);
-    plutovg_rle_rasterize(pluto->rle, pluto->path, &state->matrix, NULL, NULL, state->winding);
-    if(x) *x = pluto->rle->x;
-    if(y) *y = pluto->rle->y;
-    if(w) *w = pluto->rle->w;
-    if(h) *h = pluto->rle->h;
-}
-
-void plutovg_stroke_extents(plutovg_t* pluto, double* x, double* y, double* w, double* h)
-{
-    plutovg_state_t* state = pluto->state;
-    plutovg_rle_clear(pluto->rle);
-    plutovg_rle_rasterize(pluto->rle, pluto->path, &state->matrix, NULL, &state->stroke, plutovg_fill_rule_non_zero);
-    if(x) *x = pluto->rle->x;
-    if(y) *y = pluto->rle->y;
-    if(w) *w = pluto->rle->w;
-    if(h) *h = pluto->rle->h;
-}
-
-void plutovg_clip_extents(plutovg_t* pluto, double* x, double* y, double* w, double* h)
-{
-    plutovg_state_t* state = pluto->state;
-    if(x) *x = state->clippath ? state->clippath->x : pluto->clip.x;
-    if(y) *y = state->clippath ? state->clippath->y : pluto->clip.y;
-    if(w) *w = state->clippath ? state->clippath->w : pluto->clip.w;
-    if(h) *h = state->clippath ? state->clippath->h : pluto->clip.h;
 }
 
 void plutovg_reset_clip(plutovg_t* pluto)

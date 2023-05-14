@@ -36,6 +36,23 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "stdexcept": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "clocale": "cpp",
+        "fstream": "cpp",
+        "ios": "cpp",
+        "iostream": "cpp",
+        "istream": "cpp",
+        "iterator": "cpp",
+        "list": "cpp",
+        "ostream": "cpp",
+        "set": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "system_error": "cpp",
+        "xfacet": "cpp",
+        "xiosbase": "cpp",
+        "xlocale": "cpp",
+        "xlocinfo": "cpp",
+        "xlocnum": "cpp"
     }
 }
