@@ -10,7 +10,7 @@ MSP uses CMake to build the program.
 
 Here is the demo of the SVG file showing in MSP viewer
 
-[](msp_effect.png)
+![](msp_effect.png)
 
 
 ### directory layout:
