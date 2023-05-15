@@ -12,6 +12,9 @@ Here is the demo of the SVG file showing in MSP viewer
 
 ![](msp_effect.png)
 
+The below is the svg file showing in browser. You can compare these two pictures.
+
+![](Shu_with_feather_mirror.svg)
 
 ### directory layout:
 - src : contains all the source code
