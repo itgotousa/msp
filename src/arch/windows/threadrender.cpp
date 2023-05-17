@@ -233,13 +233,12 @@ static Animation GetAnimationMetaData(IWICBitmapDecoder*);
 
 unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 {
-	int   fd;
+    int   fd;
     BOOL  isOpened = FALSE;
-	unsigned char *p;
+    unsigned char *p;
     unsigned char* q;
     unsigned char  png_magic[8] = { 0 };
-	unsigned int size, bytes, i, k, charlen;
-
+    unsigned int size, bytes, i, k, charlen;
     fileType ft = fileUnKnown;
     WPARAM wp = 0;
     LPARAM lp = 0;
@@ -250,8 +249,8 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 
     if(NULL == tp) return 0;
 
-	HWND hWndUI = tp->hWnd;
-	ATLASSERT(::IsWindow(hWndUI));
+    HWND hWndUI = tp->hWnd;
+    ATLASSERT(::IsWindow(hWndUI));
 
     n = _read_png_file(tp->pfilePath);
 
@@ -272,23 +271,23 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         return 0;
     }
     /* now check if it is a md or svg file */
-	if (0 != _tsopen_s(&fd, tp->pfilePath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
-	{
+    if (0 != _tsopen_s(&fd, tp->pfilePath, _O_RDONLY | _O_TEXT, _SH_DENYWR, 0))
+    {
         wp = UI_NOTIFY_FILEFAIL;
         lp = 1;
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
-		return 0;
-	}
+	    return 0;
+    }
 	
     isOpened = TRUE;
 
-	size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
-	if (size > MAX_BUF_LEN || 0 == size) /* even it is one byte, it is still a valid md file */
-	{
+    size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
+    if (size > MAX_BUF_LEN || 0 == size) /* even it is one byte, it is still a valid md file */
+    {
         wp = UI_NOTIFY_FILEFAIL;
         lp = 2;
         goto Quit_open_mspfile_thread;
-	}
+    }
     _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
     p = (unsigned char*)malloc(size);
@@ -300,81 +299,91 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     }
 
     bytes = (unsigned int)_read(fd, p, size); /* read the entire PNG file into the buffer */
+#if 0
     if (bytes != size) /* read error, since bytes != size */
     {
         wp = UI_NOTIFY_FILEFAIL;
         lp = 6;
         goto Quit_open_mspfile_thread;
     }
-
+#endif
     /* scan the buffer to decide the file type */
     i = 0;
     q = p;
-    while(i < size) /* skip the space characters */
+    while(i < bytes) /* skip the space characters */
     {
-        if (0x20 == *q || '\t' == *q || '\r' == *q || '\n' == *q) { q++; i++; }
-        else break;
+        if (0x20 != *q && '\t' != *q && '\r' != *q && '\n' != *q) break;
+        q++; i++; 
     }
     q = p + i;
-    if(i < size - 7)  /* <svg></svg> ||  <?xml ?> */
+    if(i < bytes - 7)  /* <svg></svg> ||  <?xml ?> */
     {
-        if('<' == q[0] && 's' == q[1] && 'v' == q[2] && 'g' == q[3]) ft = fileSVG;
-        else if('<' == q[0] && '?' == q[1] && 'x' == q[2] && 'm' == q[3] && 'l' == q[4]) ft =fileSVG;
+        const unsigned char svg_sig[] = "<svg";
+        const unsigned char xml_sig[] = "<?xml";
+        if (0 == memcmp(svg_sig, q, 4))
+        {
+            ft = fileSVG;
+        }
+        else if (0 == memcmp(xml_sig, q, 5))
+        {
+            ft = fileSVG;
+        }
+
+        //if('<' == q[0] && 's' == q[1] && 'v' == q[2] && 'g' == q[3]) ft = fileSVG;
+        //else if('<' == q[0] && '?' == q[1] && 'x' == q[2] && 'm' == q[3] && 'l' == q[4]) ft =fileSVG;
+
         if(fileSVG == ft) goto handle_svg;
     }
 
-    BOOL bUTF8 = TRUE;
-    bytes = 0;
-    while(i < size && *q && bytes < 1024) /* check maxium 1024 bytes to see if the character is UTF-8 */
+    while(i < bytes && *q) /* get all UTF-8 characters until we meed a none-UTF8 chararcter*/
     {
-        if(0 == (0x80 & *q)) 
+        if (0 == (0x80 & *q))
         {
-            q++; i++; bytes++;
-        } 
-        else if(0xC0 == (0xE0 & *q))
+            charlen = 1;
+        }
+        else if(0xE0 == (0xF0 & *q))
         {
-            charlen = 2;
-            if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
+            charlen = 3;
+            if(i > size - charlen) { goto handle_markdown; }
             else 
             {
                 for(k = 1; k < charlen; k++)
                 {
-                    if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
+                    if(0x80 != (0xC0 & *(q+k))) { goto handle_markdown; }
                 }
-                q+=charlen; i+=charlen; bytes+=charlen;
             }
         } 
-        else if(0xE0 == (0xF0 & *q))
+        else if(0xC0 == (0xE0 & *q))
         {
-            charlen = 3;
-            if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
+            charlen = 2;
+            if(i > size - charlen) { goto handle_markdown; }
             else 
             {
                 for (k = 1; k < charlen; k++)
                 {
-                    if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
+                    if(0x80 != (0xC0 & *(q+k))) { goto handle_markdown; }
                 }
-                q+=charlen; i+=charlen; bytes+=charlen;
             }
         }
         else if(0xF0 == (0xF8 & *q))
         {
             charlen = 4;
-            if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
+            if(i > size - charlen) { goto handle_markdown; }
             else 
             {
                 for (k = 1; k < charlen; k++)
                 {
-                    if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
+                    if(0x80 != (0xC0 & *(q+k))) { goto handle_markdown; }
                 }
-                q+=charlen; i+=charlen; bytes+=charlen;
             }
         }
-        else { bUTF8 = FALSE; goto handle_markdown; }
+        else { goto handle_markdown; }
+
+        q += charlen; i += charlen;
     }
 
 handle_markdown:
-    if(bUTF8) ft = fileMD; /* any legal UTF8 encoding stream is a legal markdown file */
+    if(i > 0 ) ft = fileMD; /* any legal UTF8 encoding stream is a legal markdown file */
     if (fileMD == ft)
     {
         mcxt = AllocSetContextCreate(TopMemoryContext, "Markdown-Cxt", ALLOCSET_DEFAULT_SIZES);
@@ -394,7 +403,7 @@ handle_markdown:
             if ('\r' == *q || '\n' == *q) break;
             q++; i++;
         }
-        q = (unsigned char*)palloc(i+1);
+        q = (unsigned char*)palloc(i);
         if (NULL == q)
         {
             MemoryContextDelete(mcxt);
@@ -403,8 +412,8 @@ handle_markdown:
             goto Quit_open_mspfile_thread;
         }
 
-        memcpy(q, p, i);
-        q[i] = 0;
+        memcpy(q, p, i-1);
+        q[i-1] = 0;
 
         free(p); p = NULL;
         _close(fd); isOpened = FALSE;
