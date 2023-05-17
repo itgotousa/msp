@@ -236,11 +236,14 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 	int   fd;
     BOOL  isOpened = FALSE;
 	unsigned char *p;
+    unsigned char* q;
     unsigned char  png_magic[8] = { 0 };
-	unsigned int size, bytes, ret;
+	unsigned int size, bytes, i, k, charlen;
+
     fileType ft = fileUnKnown;
     WPARAM wp = 0;
     LPARAM lp = 0;
+    MemoryContext mcxt = NULL;
     D2DRenderNode n, m;
     HRESULT hr = S_OK;
     ThreadParam* tp = (ThreadParam*)lpData;
@@ -305,9 +308,8 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     }
 
     /* scan the buffer to decide the file type */
-    unsigned int i = 0;
-    unsigned char* q = p;
-
+    i = 0;
+    q = p;
     while(i < size) /* skip the space characters */
     {
         if (0x20 == *q || '\t' == *q || '\r' == *q || '\n' == *q) { q++; i++; }
@@ -316,13 +318,12 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     q = p + i;
     if(i < size - 7)  /* <svg></svg> ||  <?xml ?> */
     {
-        if('<' == q[0] && 's' == q[1] && 'v' == q[2] && 'g' == q[3]) ft =fileSVG;
+        if('<' == q[0] && 's' == q[1] && 'v' == q[2] && 'g' == q[3]) ft = fileSVG;
         else if('<' == q[0] && '?' == q[1] && 'x' == q[2] && 'm' == q[3] && 'l' == q[4]) ft =fileSVG;
         if(fileSVG == ft) goto handle_svg;
     }
 
     BOOL bUTF8 = TRUE;
-    unsigned int charlen;
     bytes = 0;
     while(i < size && *q && bytes < 1024) /* check maxium 1024 bytes to see if the character is UTF-8 */
     {
@@ -336,7 +337,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
             else 
             {
-                for(unsigned int k = 1; k < charlen; k++)
+                for(k = 1; k < charlen; k++)
                 {
                     if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
                 }
@@ -349,7 +350,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
             else 
             {
-                for(unsigned int k = 1; k < charlen; k++)
+                for (k = 1; k < charlen; k++)
                 {
                     if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
                 }
@@ -362,7 +363,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
             if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
             else 
             {
-                for(unsigned int k = 1; k < charlen; k++)
+                for (k = 1; k < charlen; k++)
                 {
                     if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
                 }
@@ -373,7 +374,61 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     }
 
 handle_markdown:
-    if(bUTF8) ft = fileMD;
+    if(bUTF8) ft = fileMD; /* any legal UTF8 encoding stream is a legal markdown file */
+    if (fileMD == ft)
+    {
+        mcxt = AllocSetContextCreate(TopMemoryContext, "Markdown-Cxt", ALLOCSET_DEFAULT_SIZES);
+        if (NULL == mcxt) 
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
+        }
+
+        MemoryContextSwitchTo(mcxt);
+
+        q = p; i = 0;
+        while (i < size)
+        {
+            if ('\r' == *q || '\n' == *q) break;
+            q++; i++;
+        }
+        q = (unsigned char*)palloc(i+1);
+        if (NULL == q)
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
+        }
+
+        memcpy(q, p, i);
+        q[i] = 0;
+
+        free(p); p = NULL;
+        _close(fd); isOpened = FALSE;
+
+        n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+        n->std.flag = SO_TYPE_TEXT;
+        n->std.next = NULL;
+        n->std.data = q;
+        n->std.len = i;
+
+        d2d.ft = fileMD;
+        m = d2d.pData;
+
+        EnterCriticalSection(&(d2d.cs));
+            d2d.pData = n;
+        LeaveCriticalSection(&(d2d.cs));
+
+        wp = UI_NOTIFY_FILEOPEN;
+        lp = (LPARAM)fileMD;
+        PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
+
+        ReleaseD2DResource(m);
+        return 0;
+    }
 
 handle_svg:
     if(fileSVG == ft)
@@ -401,7 +456,7 @@ handle_svg:
 
         bitmap.convertToRGBA();
 
-        MemoryContext mcxt = AllocSetContextCreate(TopMemoryContext, "SVG2PNG-Cxt", ALLOCSET_DEFAULT_SIZES);
+        mcxt = AllocSetContextCreate(TopMemoryContext, "SVG2PNG-Cxt", ALLOCSET_DEFAULT_SIZES);
         if(NULL == mcxt) return NULL;
         MemoryContextSwitchTo(mcxt);
         n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
