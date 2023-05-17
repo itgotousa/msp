@@ -60,6 +60,49 @@ D2DContextData 	d2d = {0};
 
 CAppModule _Module;
 
+// Struct for in-memory, raw font data.
+struct MemoryFontInfo
+{
+	const BYTE* fontData;
+	DWORD		fontDataSize;
+};
+
+class FontResources : public IUnknown
+{
+public:
+    FontResources() {}
+
+    // IUnknown interface
+    ULONG STDMETHODCALLTYPE AddRef()
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void **object)
+    {
+        *object = nullptr;
+        if (riid == __uuidof(IUnknown))
+        {
+            AddRef();
+            *object = this;
+            return S_OK;
+        }
+        return E_NOINTERFACE;
+    }
+
+    ULONG STDMETHODCALLTYPE Release()
+    {
+        ULONG newCount = InterlockedDecrement(&m_refCount);
+        if (newCount == 0)
+            delete this;
+        return newCount;
+    }
+
+private:
+	std::vector<MemoryFontInfo> m_appFontResources;
+	ULONG m_refCount = 0;
+};
+
 class CMspThreadManager
 {
 public:
@@ -227,40 +270,141 @@ void ReleaseD2DResource(D2DRenderNode n)
 	MemoryContextDelete(mcxt);
 }
 
-static int InitInstance(HINSTANCE hInstance)
+static int InitD2D(HINSTANCE hInstance)
 {
-	g_threadCount = 0;
-	g_monitor = FALSE;
-	d2d.pFactory = NULL;
-	d2d.ft = fileUnKnown;
+	HRESULT hr = S_OK;
+
+	ZeroMemory(&d2d, sizeof(D2DContextData));
+	d2d.pFontResource = new FontResources();
+	if(nullptr == d2d.pFontResource) return -1;
 	
 	InitializeCriticalSection(&(d2d.cs));
-
-	HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
+	// Create the factories for D2D, DWrite, and WIC.
+	// Create D2D factory
+	hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
 	if(FAILED(hr)) return -1;
+
 	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&(d2d.pDWriteFactory)));
 	if(FAILED(hr)) return -1;
-	
+
+	 // Create WIC factory to load images.
 	hr = CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, 
 						IID_IWICImagingFactory, reinterpret_cast<void**>(&(d2d.pIWICFactory)));	
 	if(FAILED(hr)) return -1;
 
-#if 0	
-	hr = d2d.pDWriteFactory->CreateTextFormat(
-            L"Courier New",                // Font family name.
-            NULL,                       // Font collection (NULL sets it to use the system font collection).
-            DWRITE_FONT_WEIGHT_REGULAR,
-            DWRITE_FONT_STYLE_NORMAL,
-            DWRITE_FONT_STRETCH_NORMAL,
-            25.0f,
-            L"en-us",
-            &(d2d.pTextFormat)
-			);
-	if(FAILED(hr)) return -1;
-
-	hr = d2d.pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-	if (SUCCEEDED(hr)) d2d.pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+#if 0
+	IDWriteFontFile* fontFile;
+	hr = d2d.pDWriteFactory->CreateFontFileReference(L"HarmonyOS_Sans_SC_Thin.ttf", 
+					NULL, &fontFile);
+	if(SUCCEEDED(hr))
+	{
+		//IDWriteFontSetBuilder1 fontSetBuilder;
+	}
 #endif 
+
+#if 0
+	HRSRC  res = FindResource(hInstance, MAKEINTRESOURCE(IDR_FONT_HARMONYOS_THIN), RT_RCDATA);
+	if(res)
+	{
+		HGLOBAL res_handle = LoadResource(hInstance, res);
+		if(res_handle)
+		{
+			int ret;
+			d2d.fontData 	 = (BYTE*)LockResource(res_handle);
+			d2d.fontDataSize = SizeofResource(hInstance, res);
+
+			hr = d2d.pDWriteFactory->CreateInMemoryFontFileLoader(&(d2d.fontLoader));
+			if(SUCCEEDED(hr))
+			{
+				hr = d2d.pDWriteFactory->RegisterFontFileLoader(d2d.fontLoader);
+				if(SUCCEEDED(hr))
+				{
+					IDWriteFontFile* fontFileReference;
+					hr = d2d.fontLoader->CreateInMemoryFontFileReference(
+									d2d.pDWriteFactory,
+									d2d.fontData,
+									d2d.fontDataSize,
+									d2d.pFontResource,
+									&fontFileReference);
+					if(SUCCEEDED(hr))
+					{
+						IDWriteFontSetBuilder1* fb;	
+						hr = d2d.pDWriteFactory->CreateFontSetBuilder(&fb);
+						if(SUCCEEDED(hr))
+						{
+							hr = fb->AddFontFile(fontFileReference);
+							if(SUCCEEDED(hr))
+							{
+								IDWriteFontSet* pFontSet;
+								fb->CreateFontSet(&pFontSet);
+								if(SUCCEEDED(hr))
+								{
+									UINT32 fc = pFontSet->GetFontCount();
+									fc++;
+									SAFERELEASE(pFontSet);
+								}
+							}
+							SAFERELEASE(fb);
+						}
+						SAFERELEASE(fontFileReference);
+					}
+				}
+			}
+		}
+	}
+#endif 
+	return 0;
+}
+
+static void ReleaseD2D(HINSTANCE hInstance)
+{
+	EnterCriticalSection(&(d2d.cs));
+		ReleaseD2DResource(d2d.pData);
+	LeaveCriticalSection(&(d2d.cs));
+
+	DeleteCriticalSection(&(d2d.cs));
+	
+	if(nullptr != d2d.pFontResource)
+	{
+		delete d2d.pFontResource;
+		d2d.pFontResource = nullptr;
+	}
+	if(NULL != d2d.fontLoader)
+	{
+		(d2d.pDWriteFactory)->UnregisterFontFileLoader(d2d.fontLoader);
+		d2d.fontLoader->Release();
+		d2d.fontLoader = NULL;
+	}
+	if(NULL != d2d.pFactory) 
+	{
+		(d2d.pFactory)->Release();
+		(d2d.pFactory) = NULL;
+	}
+	if(NULL != d2d.pDWriteFactory) 
+	{
+		(d2d.pDWriteFactory)->Release();
+		(d2d.pDWriteFactory) = NULL;
+	}
+	if(NULL != d2d.pIWICFactory) 
+	{
+		(d2d.pIWICFactory)->Release();
+		(d2d.pIWICFactory) = NULL;
+	}
+	if(NULL != d2d.pTextFormat) 
+	{
+		(d2d.pTextFormat)->Release();
+		(d2d.pTextFormat) = NULL;
+	}
+}
+
+static int InitInstance(HINSTANCE hInstance)
+{
+	int iRet = 0;
+	g_threadCount = 0;
+	g_monitor = FALSE;
+
+	iRet = InitD2D(hInstance);
+	if(iRet < 0) return -1;
 
 	g_kaSignal[0] = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if(NULL == g_kaSignal[0])
@@ -272,7 +416,7 @@ static int InitInstance(HINSTANCE hInstance)
 
 	MemoryContextInit();
 	//MessageBox(NULL, _T("MemoryContextInit!"), _T("MB_OK"), MB_OK);
-	render_svg_logo(svg_logo);
+	//render_svg_logo(svg_logo);
 	return 0;
 }
 
@@ -281,32 +425,7 @@ static int ExitInstance(HINSTANCE hInstance)
 	int tries = 20;
 	SetEvent(g_kaSignal[0]); /* wakeup the monitoring thread */
 
-
-	EnterCriticalSection(&(d2d.cs));
-		ReleaseD2DResource(d2d.pData);
-	LeaveCriticalSection(&(d2d.cs));
-
-	DeleteCriticalSection(&(d2d.cs));
-	
-	if(NULL != d2d.pFactory) {
-		(d2d.pFactory)->Release();
-		(d2d.pFactory) = NULL;
-	}
-
-	if(NULL != d2d.pDWriteFactory) {
-		(d2d.pDWriteFactory)->Release();
-		(d2d.pDWriteFactory) = NULL;
-	}
-
-	if(NULL != d2d.pIWICFactory) {
-		(d2d.pIWICFactory)->Release();
-		(d2d.pIWICFactory) = NULL;
-	}
-
-	if(NULL != d2d.pTextFormat) {
-		(d2d.pTextFormat)->Release();
-		(d2d.pTextFormat) = NULL;
-	}
+	ReleaseD2D(hInstance);
 
 	while(0 != g_threadCount)
 	{
@@ -330,13 +449,13 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	hRes = _Module.Init(NULL, hInstance);
 	ATLASSERT(SUCCEEDED(hRes));
 
-	int nRet = InitInstance(hInstance);
+	int iRet = InitInstance(hInstance);
 
-	if(0 != nRet) goto app_quit;
+	if(0 != iRet) goto app_quit;
 	// BLOCK: Run application
 	{
 		CMspThreadManager mgr;
-		nRet = mgr.Run(lpstrCmdLine, nCmdShow);
+		iRet = mgr.Run(lpstrCmdLine, nCmdShow);
 	}
 
 app_quit:
@@ -345,5 +464,5 @@ app_quit:
 	_Module.Term();
 	::CoUninitialize();
 
-	return nRet;
+	return iRet;
 }

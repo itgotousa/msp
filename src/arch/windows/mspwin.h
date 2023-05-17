@@ -65,16 +65,23 @@ typedef struct D2DRenderNodeData
 
 typedef struct D2DRenderNodeData *D2DRenderNode;
 
+class FontResources;
+
 typedef struct D2DContextData
 {
     ID2D1Factory*       pFactory;
-    IDWriteFactory*     pDWriteFactory;
+    IDWriteFactory5*     pDWriteFactory;
     IWICImagingFactory* pIWICFactory;
     IDWriteTextFormat*  pTextFormat;
     fileType            ft;
     CRITICAL_SECTION    cs;
     D2DRenderNode       pData;
     D2DRenderNode       pDataDefault;
+    FontResources*      pFontResource;
+    BYTE*               fontData;
+    DWORD               fontDataSize;
+    IDWriteFontSet*     fontSet;
+    IDWriteInMemoryFontFileLoader* fontLoader;
 } D2DContextData;
 
 typedef struct

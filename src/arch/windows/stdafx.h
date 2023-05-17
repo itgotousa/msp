@@ -6,8 +6,10 @@
 #pragma once
 
 // Change these values to use different versions
-#define WINVER		0x0601
-#define _WIN32_WINNT	0x0601
+//#define WINVER		0x0601
+//#define _WIN32_WINNT	0x0601
+#define WINVER		0x0A00
+#define _WIN32_WINNT	0x0A00
 #define _WIN32_IE	0x0700
 #define _RICHEDIT_VER	0x0500
 
@@ -20,7 +22,7 @@
 
 #include <iostream>
 #include <sstream>
-
+#include <vector>
 #include <atlbase.h>
 #include <atlapp.h>
 
@@ -29,6 +31,7 @@ extern CAppModule _Module;
 #include <atlwin.h>
 
 #include <WinBase.h>
+#include <libloaderapi.h>
 #include <VersionHelpers.h>
 // C RunTime Header Files
 #include <stdio.h>
@@ -46,6 +49,7 @@ extern CAppModule _Module;
 
 #include <d2d1.h>
 #include <d2d1helper.h>
+#include <dwrite_3.h>
 #include <dwrite.h>
 #include <wincodec.h>
 #pragma comment(lib, "d2d1.lib")
