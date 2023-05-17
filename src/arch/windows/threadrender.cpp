@@ -243,14 +243,14 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     LPARAM lp = 0;
     D2DRenderNode n, m;
     HRESULT hr = S_OK;
-    ThreadParam* t = (ThreadParam*)lpData;
+    ThreadParam* tp = (ThreadParam*)lpData;
 
-    if(NULL == t) return 0;
+    if(NULL == tp) return 0;
 
-	HWND hWndUI = t->hWnd;
+	HWND hWndUI = tp->hWnd;
 	ATLASSERT(::IsWindow(hWndUI));
 
-    n = _read_png_file(t->pfilePath);
+    n = _read_png_file(tp->pfilePath);
 
     if(NULL != n) /* it is one PNG or JPG/GIF file */
     {
@@ -269,7 +269,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         return 0;
     }
     /* now check if it is a md or svg file */
-	if (0 != _tsopen_s(&fd, t->pfilePath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
+	if (0 != _tsopen_s(&fd, tp->pfilePath, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) 
 	{
         wp = UI_NOTIFY_FILEFAIL;
         lp = 1;
@@ -304,7 +304,78 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         goto Quit_open_mspfile_thread;
     }
 
-    ft = fileSVG;
+    /* scan the buffer to decide the file type */
+    unsigned int i = 0;
+    unsigned char* q = p;
+
+    while(i < size) /* skip the space characters */
+    {
+        if (0x20 == *q || '\t' == *q || '\r' == *q || '\n' == *q) { q++; i++; }
+        else break;
+    }
+    q = p + i;
+    if(i < size - 7)  /* <svg></svg> ||  <?xml ?> */
+    {
+        if('<' == q[0] && 's' == q[1] && 'v' == q[2] && 'g' == q[3]) ft =fileSVG;
+        else if('<' == q[0] && '?' == q[1] && 'x' == q[2] && 'm' == q[3] && 'l' == q[4]) ft =fileSVG;
+        if(fileSVG == ft) goto handle_svg;
+    }
+
+    BOOL bUTF8 = TRUE;
+    unsigned int charlen;
+    bytes = 0;
+    while(i < size && *q && bytes < 1024) /* check maxium 1024 bytes to see if the character is UTF-8 */
+    {
+        if(0 == (0x80 & *q)) 
+        {
+            q++; i++; bytes++;
+        } 
+        else if(0xC0 == (0xE0 & *q))
+        {
+            charlen = 2;
+            if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
+            else 
+            {
+                for(unsigned int k = 1; k < charlen; k++)
+                {
+                    if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
+                }
+                q+=charlen; i+=charlen; bytes+=charlen;
+            }
+        } 
+        else if(0xE0 == (0xF0 & *q))
+        {
+            charlen = 3;
+            if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
+            else 
+            {
+                for(unsigned int k = 1; k < charlen; k++)
+                {
+                    if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
+                }
+                q+=charlen; i+=charlen; bytes+=charlen;
+            }
+        }
+        else if(0xF0 == (0xF8 & *q))
+        {
+            charlen = 4;
+            if(i > size - charlen) { bUTF8 = FALSE; goto handle_markdown; }
+            else 
+            {
+                for(unsigned int k = 1; k < charlen; k++)
+                {
+                    if(0x80 != (0xC0 & *(q+k))) { bUTF8 = FALSE; goto handle_markdown; }
+                }
+                q+=charlen; i+=charlen; bytes+=charlen;
+            }
+        }
+        else { bUTF8 = FALSE; goto handle_markdown; }
+    }
+
+handle_markdown:
+    if(bUTF8) ft = fileMD;
+
+handle_svg:
     if(fileSVG == ft)
     {
         std::uint32_t width = 0, height = 0;

@@ -13,6 +13,7 @@ extern "C" {
 
 #include "pg_config_manual.h"
 #include "c.h"
+#include "pg_wchar.h"
 #include "attnum.h"
 #include "miscadmin.h"
 #include "elog.h"

@@ -11,7 +11,7 @@
 #define MSP_ALIGN_DEFAULT(size)	MSP_ALIGN(size, 8)
 #define MSP_ALIGN_PAGE(size)	MSP_ALIGN(size, 1<<12)
 
-#define MAX_BUF_LEN   (128 * 1024 * 1024) /* the max length of supported file is 128 MB */
+#define MAX_BUF_LEN   (32 * 1024 * 1024) /* the max length of supported file is 32 MB */
 
 typedef enum 
 {
