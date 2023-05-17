@@ -397,13 +397,7 @@ handle_markdown:
 
         MemoryContextSwitchTo(mcxt);
 
-        q = p; i = 0;
-        while (i < size)
-        {
-            if ('\r' == *q || '\n' == *q) break;
-            q++; i++;
-        }
-        q = (unsigned char*)palloc(i);
+        q = (unsigned char*)palloc(i+1);
         if (NULL == q)
         {
             MemoryContextDelete(mcxt);
@@ -411,9 +405,8 @@ handle_markdown:
             lp = 6;
             goto Quit_open_mspfile_thread;
         }
-
-        memcpy(q, p, i-1);
-        q[i-1] = 0;
+        memcpy(q, p, i);
+        q[i] = 0;
 
         free(p); p = NULL;
         _close(fd); isOpened = FALSE;
