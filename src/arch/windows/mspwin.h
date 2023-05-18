@@ -61,6 +61,7 @@ typedef struct D2DRenderNodeData
     IWICFormatConverter*    pConverter;
     ID2D1PathGeometry*      pGeometry;
     ID2D1StrokeStyle*       pStrokeStyle;
+    IDWriteTextLayout*      textLayout;
 } D2DRenderNodeData;
 
 typedef struct D2DRenderNodeData *D2DRenderNode;
@@ -69,18 +70,19 @@ class FontResources;
 
 typedef struct D2DContextData
 {
-    ID2D1Factory*       pFactory;
+    ID2D1Factory*        pFactory;
     IDWriteFactory5*     pDWriteFactory;
-    IWICImagingFactory* pIWICFactory;
-    IDWriteTextFormat*  pTextFormat;
-    fileType            ft;
-    CRITICAL_SECTION    cs;
-    D2DRenderNode       pData;
-    D2DRenderNode       pDataDefault;
-    FontResources*      pFontResource;
-    BYTE*               fontData;
-    DWORD               fontDataSize;
-    IDWriteFontSet*     fontSet;
+    IWICImagingFactory*  pIWICFactory;
+    IDWriteTextFormat*   pTextFormat;
+    fileType             ft;
+    CRITICAL_SECTION     cs;
+    D2DRenderNode        pData;
+    D2DRenderNode        pDataDefault;
+    FontResources*       fontResource;
+//    BYTE*               fontData;
+//    DWORD               fontDataSize;
+//    IDWriteFontSet*     fontSet;
+//    IDWriteFontCollection1* fontCollection;
     IDWriteInMemoryFontFileLoader* fontLoader;
 } D2DContextData;
 

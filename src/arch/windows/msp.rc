@@ -136,7 +136,8 @@ IDR_MAINFRAME               ICON                    "res\\msp128.ico"
 //
 // Font
 //
-IDR_FONT_HARMONYOS_THIN     RCDATA      "res\\HarmonyOS_Sans_SC_Thin.ttf"
+//IDR_FONT_HARMONYOS_THIN     RCDATA      "res\\HarmonyOS_Sans_SC_Thin.ttf"
+IDR_FONT_HARMONYOS_THIN     RCDATA      "res\\OPlusSans3-Light.ttf"
 
 /////////////////////////////////////////////////////////////////////////////
 //

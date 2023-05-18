@@ -106,19 +106,154 @@ SVG allows for three types of graphic objects: vector graphic shapes (e.g., path
 - ID2D1GeometrySink::AddLine
 - ID2D1GeometrySink::AddQuadraticBezier
 
-### Text渲染引擎
+### DirectWrite API
+- CreateFontFace : IDWriteFactory --> IDWriteFontFile --> IDWriteFontFace
+- GetFontFromFontFace : from IDWriteFontFace --> IDWriteFont
+- GetFontFamily : IDWriteFont --> IDWriteFontFamily : GetFamilyNames
+-  IDWriteFontSet --> IDWriteFontFaceReference (GetFontFaceReference) --> IDWriteFontFace3(CreateFontFace)
+- CreateFontCollectionFromFontSet : IDWriteFontSet --> IDWriteFontCollection1
 
-我打算采用Windows Terminal中最新的Atlas文本渲染引擎来做MSP的文本渲染。 本节内容提供了我对Atlas的研究成果。
+	HRSRC  res = FindResource(hInstance, MAKEINTRESOURCE(IDR_FONT_HARMONYOS_THIN), RT_RCDATA);
+	if(res)
+	{
+		HGLOBAL res_handle = LoadResource(hInstance, res);
+		if(res_handle)
+		{
 
-### SVG渲染引擎
+			BYTE* data 	 = (BYTE*)LockResource(res_handle);
+			DWORD size	 = SizeofResource(hInstance, res);
+			d2d.fontResource->AttachFontResource(data, size);
 
-采用Adobe开源的SVG引擎进行魔改
+			hr = d2d.pDWriteFactory->CreateInMemoryFontFileLoader(&(d2d.fontLoader));
+			if(SUCCEEDED(hr))
+			{
+				hr = d2d.pDWriteFactory->RegisterFontFileLoader(d2d.fontLoader);
+				if(SUCCEEDED(hr))
+				{
+					IDWriteFontFile* fontFileReference;
+					hr = d2d.fontLoader->CreateInMemoryFontFileReference(
+									d2d.pDWriteFactory,
+									data,
+									size,
+									d2d.fontResource,
+									&fontFileReference);
+					if(SUCCEEDED(hr))
+					{
 
-https://github.com/adobe/svg-native-viewer
+						IDWriteFontSetBuilder1* fb;	
+						hr = d2d.pDWriteFactory->CreateFontSetBuilder(&fb);
+						if(SUCCEEDED(hr))
+						{
+							hr = fb->AddFontFile(fontFileReference);
+							if(SUCCEEDED(hr))
+							{
+								IDWriteFontSet* pFontSet;
+								fb->CreateFontSet(&pFontSet);
+								if(SUCCEEDED(hr))
+								{
+									UINT32 fc = pFontSet->GetFontCount();
+									IDWriteFont* pFont;
+									BOOL exists;
+									hr = pFontSet->GetFontByIndex(i, &pFont, &exists);
+#if 0
+									IDWriteStringList* localizedFamilyNames = NULL;
+									hr = pFontSet->GetPropertyValues(DWRITE_FONT_PROPERTY_ID_FULL_NAME, &localizedFamilyNames);
+									if (SUCCEEDED(hr))
+									{
+										wchar_t fontFamilyName[256] = { 0 };
+										hr = localizedFamilyNames->GetString(0, fontFamilyName, 255);
+										fc++;
+									}
+#endif
+									SAFERELEASE(pFontSet);
+								}
+							}
+							SAFERELEASE(fb);
+						}
+						SAFERELEASE(fontFileReference);
+					}
 
-cmake -Bbuild/win64 -H. -G "Visual Studio 16 2019" -DGDIPLUS=ON -DD2D=ON
+				}
+			}
+		}
+	}
 
 
+#if 0
+				UINT32 cnt = fc1->GetFontFamilyCount();
+				IDWriteFontFamily* ffm;
+				hr = fc1->GetFontFamily(0, &ffm);
+				if (FAILED(hr))
+				{
+					delete d2d.fontResource;
+					d2d.fontResource = nullptr;
+					SAFERELEASE(fc1);
+					SAFERELEASE(pFontSet);
+					SAFERELEASE(fb);
+					SAFERELEASE(fontFileReference);
+					return 0;
+				}
 
-SVGDocument
+				UINT32 index = 0;
+				BOOL exists = false;
+				IDWriteLocalizedStrings* pFamilyNames = NULL;
+				hr = ffm->GetFamilyNames(&pFamilyNames);
+				if (FAILED(hr))
+				{
+					delete d2d.fontResource;
+					d2d.fontResource = nullptr;
+					SAFERELEASE(ffm);
+					SAFERELEASE(fc1);
+					SAFERELEASE(pFontSet);
+					SAFERELEASE(fb);
+					SAFERELEASE(fontFileReference);
+					return 0;
+				}
+				wchar_t name[256] = { 0 };
+				pFamilyNames->GetString(0, name, 255);
 
+				IDWriteFontFaceReference* ffr;
+				hr = pFontSet->GetFontFaceReference(0, &ffr);
+				if (FAILED(hr))
+				{
+					delete d2d.fontResource;
+					d2d.fontResource = nullptr;
+					SAFERELEASE(pFontSet);
+					SAFERELEASE(fb);
+					SAFERELEASE(fontFileReference);
+					return 0;
+				}
+				IDWriteFontFace3* ff3;
+				hr = ffr->CreateFontFace(&ff3);
+				if (FAILED(hr))
+				{
+					delete d2d.fontResource;
+					d2d.fontResource = nullptr;
+					SAFERELEASE(ffr);
+					SAFERELEASE(pFontSet);
+					SAFERELEASE(fb);
+					SAFERELEASE(fontFileReference);
+					return 0;
+				}
+				SAFERELEASE(ffm);
+#endif 
+
+
+#if 0
+	IDWriteFontFile* fontFile;
+	hr = d2d.pDWriteFactory->CreateFontFileReference(L"HarmonyOS_Sans_SC_Thin.ttf", 
+					NULL, &fontFile);
+	if(SUCCEEDED(hr))
+	{
+		//IDWriteFontSetBuilder1 fontSetBuilder;
+	}
+
+	UINT32 familyCount = 0;
+	IDWriteFontCollection* pFontCollection = NULL;
+	hr = d2d.pDWriteFactory->GetSystemFontCollection(&pFontCollection);
+	if (SUCCEEDED(hr))
+	{
+		familyCount = pFontCollection->GetFontFamilyCount();
+	}
+	SAFERELEASE(pFontCollection);
+#endif 

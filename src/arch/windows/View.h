@@ -489,6 +489,7 @@ public:
 				case fileBMP	:
 				case fileJPG	:
 				case fileSVG	:
+				case fileMD		:
 					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
 					//SetScrollSize(m_width, m_height);
 					InvalidateRect(NULL);
@@ -505,6 +506,7 @@ public:
 
 	void DrawSVGGraphic(D2DRenderNode n)
 	{
+#if 0
 	    HRESULT hr = S_OK;
 
 		if(NULL == n->pGeometry) return;
@@ -518,25 +520,27 @@ public:
 
 		brush->Release();
 		brush = NULL;
+#endif
 	}
 	
 	void DrawSVGText(D2DRenderNode n)
 	{
-#if 0		
 		HRESULT hr = S_OK;
 		ID2D1SolidColorBrush* brush = NULL;
 
-		hr = target->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
 
 		if (!SUCCEEDED(hr)) return;
 
-		D2D1_RECT_F layoutRect = D2D1::RectF(n->x, n->y, 400, 200);
-
-		target->DrawText((const WCHAR *)n->data, n->len, d2d.pTextFormat, layoutRect, brush);
+//		D2D1_RECT_F layoutRect = D2D1::RectF(n->x, n->y, 400, 200);
+//		target->DrawText((const WCHAR *)n->data, n->len, d2d.pTextFormat, layoutRect, brush);
+		
+		D2D1_POINT_2F  origin = { 0 };
+		m_pRenderTarget->DrawTextLayout(origin, n->textLayout, brush);
 
 		brush->Release();
 		brush = NULL;
-#endif 
+
 	}
 
 	void DrawSVGImage(D2DRenderNode n)

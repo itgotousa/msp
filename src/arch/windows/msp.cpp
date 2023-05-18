@@ -97,10 +97,15 @@ public:
             delete this;
         return newCount;
     }
-
+	void AttachFontResource(BYTE* data, DWORD size)
+	{
+		m_fontData = data; m_fontDataSize = size;
+	}
 private:
-	std::vector<MemoryFontInfo> m_appFontResources;
-	ULONG m_refCount = 0;
+	//std::vector<MemoryFontInfo> m_appFontResources;
+	BYTE*	m_fontData;
+	DWORD	m_fontDataSize;
+	ULONG	m_refCount = 0;
 };
 
 class CMspThreadManager
@@ -128,8 +133,8 @@ public:
 		// Get the size of screen to the variable desktop
 		::GetWindowRect(hDesktop, &desktop);
 		rc.top = rc.left = 0;
-		rc.right = desktop.right >> 2;
-		rc.bottom = desktop.bottom - 200;
+		rc.right = desktop.right >> 1;
+		rc.bottom = desktop.bottom - 300;
 		if(wndFrame.CreateEx(NULL, rc) == NULL)
 		{
 			ATLTRACE(_T("Frame window creation failed!\n"));
@@ -275,10 +280,9 @@ static int InitD2D(HINSTANCE hInstance)
 	HRESULT hr = S_OK;
 
 	ZeroMemory(&d2d, sizeof(D2DContextData));
-	d2d.pFontResource = new FontResources();
-	if(nullptr == d2d.pFontResource) return -1;
 	
 	InitializeCriticalSection(&(d2d.cs));
+
 	// Create the factories for D2D, DWrite, and WIC.
 	// Create D2D factory
 	hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
@@ -292,67 +296,145 @@ static int InitD2D(HINSTANCE hInstance)
 						IID_IWICImagingFactory, reinterpret_cast<void**>(&(d2d.pIWICFactory)));	
 	if(FAILED(hr)) return -1;
 
-#if 0
-	IDWriteFontFile* fontFile;
-	hr = d2d.pDWriteFactory->CreateFontFileReference(L"HarmonyOS_Sans_SC_Thin.ttf", 
-					NULL, &fontFile);
-	if(SUCCEEDED(hr))
+	HRSRC  res = FindResource(hInstance, MAKEINTRESOURCE(IDR_FONT_HARMONYOS_THIN), RT_RCDATA);
+	if (NULL == res) return 0;
+
+	HGLOBAL res_handle = LoadResource(hInstance, res);
+	if (res_handle)
 	{
-		//IDWriteFontSetBuilder1 fontSetBuilder;
-	}
+		BYTE* data = (BYTE*)LockResource(res_handle);
+		DWORD size = SizeofResource(hInstance, res);
+
+		d2d.fontResource = new FontResources();
+		if (nullptr == d2d.fontResource) return 0;
+		d2d.fontResource->AttachFontResource(data, size);
+
+		hr = d2d.pDWriteFactory->CreateInMemoryFontFileLoader(&(d2d.fontLoader));
+		if (SUCCEEDED(hr))
+		{
+			hr = d2d.pDWriteFactory->RegisterFontFileLoader(d2d.fontLoader);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				return 0;
+			}
+
+			IDWriteFontFile* fontFileReference;
+			hr = d2d.fontLoader->CreateInMemoryFontFileReference(d2d.pDWriteFactory, 
+									data, 
+									size, 
+									d2d.fontResource,
+									&fontFileReference);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				return 0;
+			}
+			IDWriteFontSetBuilder1* fb;
+			hr = d2d.pDWriteFactory->CreateFontSetBuilder(&fb);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				SAFERELEASE(fontFileReference);
+				return 0;
+			}
+			hr = fb->AddFontFile(fontFileReference);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				SAFERELEASE(fb);
+				SAFERELEASE(fontFileReference);
+				return 0;
+			}
+			IDWriteFontSet* pFontSet;
+			hr = fb->CreateFontSet(&pFontSet);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				SAFERELEASE(fb);
+				SAFERELEASE(fontFileReference);
+				return 0;
+			}
+			IDWriteFontCollection1* fc1;
+			hr = d2d.pDWriteFactory->CreateFontCollectionFromFontSet(pFontSet, &fc1);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				SAFERELEASE(pFontSet);
+				SAFERELEASE(fb);
+				SAFERELEASE(fontFileReference);
+				return 0;
+			}
+#if 0
+			UINT32 cnt = fc1->GetFontFamilyCount();
+			IDWriteFontFamily* ffm;
+			hr = fc1->GetFontFamily(0, &ffm);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				SAFERELEASE(fc1);
+				SAFERELEASE(pFontSet);
+				SAFERELEASE(fb);
+				SAFERELEASE(fontFileReference);
+				return 0;
+			}
+
+			UINT32 index = 0;
+			BOOL exists = false;
+			IDWriteLocalizedStrings* pFamilyNames = NULL;
+			hr = ffm->GetFamilyNames(&pFamilyNames);
+			if (FAILED(hr))
+			{
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
+				SAFERELEASE(ffm);
+				SAFERELEASE(fc1);
+				SAFERELEASE(pFontSet);
+				SAFERELEASE(fb);
+				SAFERELEASE(fontFileReference);
+				return 0;
+			}
+			wchar_t name[256] = { 0 };
+			pFamilyNames->GetString(0, name, 255);
+			//hr = d2d.pDWriteFactory->CreateTextFormat(L"HarmonyOS Sans SC Thin", fc1,
+
+#endif
+#if 1
+			hr = d2d.pDWriteFactory->CreateTextFormat(L"OPlusSans 3.0", fc1,
+					DWRITE_FONT_WEIGHT_NORMAL,
+					DWRITE_FONT_STYLE_NORMAL,
+					DWRITE_FONT_STRETCH_NORMAL,
+					15,
+					L"",
+					&(d2d.pTextFormat));
+#else 
+			hr = d2d.pDWriteFactory->CreateTextFormat(L"Microsoft Yahei", NULL,
+				DWRITE_FONT_WEIGHT_NORMAL,
+				DWRITE_FONT_STYLE_NORMAL,
+				DWRITE_FONT_STRETCH_NORMAL,
+				16,
+				L"",
+				&(d2d.pTextFormat));
 #endif 
 
-#if 0
-	HRSRC  res = FindResource(hInstance, MAKEINTRESOURCE(IDR_FONT_HARMONYOS_THIN), RT_RCDATA);
-	if(res)
-	{
-		HGLOBAL res_handle = LoadResource(hInstance, res);
-		if(res_handle)
-		{
-			int ret;
-			d2d.fontData 	 = (BYTE*)LockResource(res_handle);
-			d2d.fontDataSize = SizeofResource(hInstance, res);
-
-			hr = d2d.pDWriteFactory->CreateInMemoryFontFileLoader(&(d2d.fontLoader));
-			if(SUCCEEDED(hr))
+			if (FAILED(hr))
 			{
-				hr = d2d.pDWriteFactory->RegisterFontFileLoader(d2d.fontLoader);
-				if(SUCCEEDED(hr))
-				{
-					IDWriteFontFile* fontFileReference;
-					hr = d2d.fontLoader->CreateInMemoryFontFileReference(
-									d2d.pDWriteFactory,
-									d2d.fontData,
-									d2d.fontDataSize,
-									d2d.pFontResource,
-									&fontFileReference);
-					if(SUCCEEDED(hr))
-					{
-						IDWriteFontSetBuilder1* fb;	
-						hr = d2d.pDWriteFactory->CreateFontSetBuilder(&fb);
-						if(SUCCEEDED(hr))
-						{
-							hr = fb->AddFontFile(fontFileReference);
-							if(SUCCEEDED(hr))
-							{
-								IDWriteFontSet* pFontSet;
-								fb->CreateFontSet(&pFontSet);
-								if(SUCCEEDED(hr))
-								{
-									UINT32 fc = pFontSet->GetFontCount();
-									fc++;
-									SAFERELEASE(pFontSet);
-								}
-							}
-							SAFERELEASE(fb);
-						}
-						SAFERELEASE(fontFileReference);
-					}
-				}
+				delete d2d.fontResource;
+				d2d.fontResource = nullptr;
 			}
+			SAFERELEASE(fc1);
+			SAFERELEASE(pFontSet);
+			SAFERELEASE(fb);
+			SAFERELEASE(fontFileReference);
 		}
 	}
-#endif 
 	return 0;
 }
 
@@ -364,37 +446,21 @@ static void ReleaseD2D(HINSTANCE hInstance)
 
 	DeleteCriticalSection(&(d2d.cs));
 	
-	if(nullptr != d2d.pFontResource)
+	if(nullptr != d2d.fontResource)
 	{
-		delete d2d.pFontResource;
-		d2d.pFontResource = nullptr;
+		delete d2d.fontResource;
+		d2d.fontResource = nullptr;
 	}
 	if(NULL != d2d.fontLoader)
 	{
 		(d2d.pDWriteFactory)->UnregisterFontFileLoader(d2d.fontLoader);
-		d2d.fontLoader->Release();
-		d2d.fontLoader = NULL;
+		//SAFERELEASE(d2d.fontLoader);
 	}
-	if(NULL != d2d.pFactory) 
-	{
-		(d2d.pFactory)->Release();
-		(d2d.pFactory) = NULL;
-	}
-	if(NULL != d2d.pDWriteFactory) 
-	{
-		(d2d.pDWriteFactory)->Release();
-		(d2d.pDWriteFactory) = NULL;
-	}
-	if(NULL != d2d.pIWICFactory) 
-	{
-		(d2d.pIWICFactory)->Release();
-		(d2d.pIWICFactory) = NULL;
-	}
-	if(NULL != d2d.pTextFormat) 
-	{
-		(d2d.pTextFormat)->Release();
-		(d2d.pTextFormat) = NULL;
-	}
+
+	SAFERELEASE(d2d.pTextFormat);
+	SAFERELEASE(d2d.pDWriteFactory);
+	SAFERELEASE(d2d.pIWICFactory);
+	SAFERELEASE(d2d.pFactory);
 }
 
 static int InitInstance(HINSTANCE hInstance)
