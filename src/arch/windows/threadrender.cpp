@@ -244,7 +244,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     unsigned char *p;
     unsigned char* q;
     unsigned char  png_magic[8] = { 0 };
-    unsigned int size, bytes, i, k, charlen;
+    unsigned int size, bytes, i;
     fileType ft = fileUnKnown;
     WPARAM wp = 0;
     LPARAM lp = 0;
@@ -305,17 +305,16 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     }
 
     bytes = (unsigned int)_read(fd, p, size); /* read the entire PNG file into the buffer */
-#if 0
-    if (bytes != size) /* read error, since bytes != size */
+
+    if (bytes > size) /* bytes should be <= size */
     {
         wp = UI_NOTIFY_FILEFAIL;
         lp = 6;
         goto Quit_open_mspfile_thread;
     }
-#endif
+
     /* scan the buffer to decide the file type */
-    i = 0;
-    q = p;
+    i = 0; q = p;
     while(i < bytes) /* skip the space characters */
     {
         if (0x20 != *q && '\t' != *q && '\r' != *q && '\n' != *q) break;
@@ -324,72 +323,31 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     q = p + i;
     if(i < bytes - 7)  /* <svg></svg> ||  <?xml ?> */
     {
-        const unsigned char svg_sig[] = "<svg";
-        const unsigned char xml_sig[] = "<?xml";
-        if (0 == memcmp(svg_sig, q, 4))
-        {
-            ft = fileSVG;
-        }
-        else if (0 == memcmp(xml_sig, q, 5))
-        {
-            ft = fileSVG;
-        }
-
-        //if('<' == q[0] && 's' == q[1] && 'v' == q[2] && 'g' == q[3]) ft = fileSVG;
-        //else if('<' == q[0] && '?' == q[1] && 'x' == q[2] && 'm' == q[3] && 'l' == q[4]) ft =fileSVG;
+        if(('<' == q[0]) && ('s' == q[1]) && ('v' == q[2]) && ('g' == q[3])) ft = fileSVG;
+        else if(('<' == q[0]) && ('?' == q[1]) && ('x' == q[2]) && ('m' == q[3]) && ('l' == q[4])) ft =fileSVG;
 
         if(fileSVG == ft) goto handle_svg;
     }
 
+    unsigned int charlen, k;
     while(i < bytes && *q) /* get all UTF-8 characters until we meed a none-UTF8 chararcter*/
     {
-        if (0 == (0x80 & *q))
-        {
-            charlen = 1;
-        }
-        else if(0xE0 == (0xF0 & *q))
-        {
-            charlen = 3;
-            if(i > size - charlen) { goto handle_markdown; }
-            else 
-            {
-                for(k = 1; k < charlen; k++)
-                {
-                    if(0x80 != (0xC0 & *(q+k))) { goto handle_markdown; }
-                }
-            }
-        } 
-        else if(0xC0 == (0xE0 & *q))
-        {
-            charlen = 2;
-            if(i > size - charlen) { goto handle_markdown; }
-            else 
-            {
-                for (k = 1; k < charlen; k++)
-                {
-                    if(0x80 != (0xC0 & *(q+k))) { goto handle_markdown; }
-                }
-            }
-        }
-        else if(0xF0 == (0xF8 & *q))
-        {
-            charlen = 4;
-            if(i > size - charlen) { goto handle_markdown; }
-            else 
-            {
-                for (k = 1; k < charlen; k++)
-                {
-                    if(0x80 != (0xC0 & *(q+k))) { goto handle_markdown; }
-                }
-            }
-        }
-        else { goto handle_markdown; }
+        if (0 == (0x80 & *q))           charlen = 1;  /* 1-byte character */
+        else if (0xE0 == (0xF0 & *q))   charlen = 3;  /* 3-byte character */
+        else if (0xC0 == (0xE0 & *q))   charlen = 2;  /* 2-byte character */
+        else if (0xF0 == (0xF8 & *q))   charlen = 4;  /* 4-byte character */
+        else goto handle_markdown;  /* it is not UTF-8 character anymore */
 
+        if (i > bytes - charlen) { goto handle_markdown; }
+        for (k = 1; k < charlen; k++)
+        {
+            if (0x80 != (0xC0 & *(q + k))) { goto handle_markdown; }
+        }
         q += charlen; i += charlen;
     }
 
 handle_markdown:
-    if(i > 0 ) ft = fileMD; /* any legal UTF8 encoding stream is a legal markdown file */
+    if(i > 0) ft = fileMD; /* any legal UTF8 encoding stream is a legal markdown file */
     if (fileMD == ft)
     {
         mcxt = AllocSetContextCreate(TopMemoryContext, "Markdown-Cxt", ALLOCSET_DEFAULT_SIZES);
@@ -473,7 +431,7 @@ handle_svg:
     {
         std::uint32_t width = 0, height = 0;
         std::uint32_t bgColor = 0x00000000;
-        auto document = Document::loadFromData((const char*)p, (std::size_t)size);
+        auto document = Document::loadFromData((const char*)p, (std::size_t)bytes);
         if(!document)
         {
             wp = UI_NOTIFY_FILEFAIL;
@@ -526,21 +484,26 @@ handle_svg:
         free(png);
 
         HRESULT hr = _create_device_independance_D2D(n);
-        if(SUCCEEDED(hr))
+        if (FAILED(hr))
         {
-            d2d.ft = filePNG;
-            m = d2d.pData;
-
-            EnterCriticalSection(&(d2d.cs));
-                d2d.pData = n;
-            LeaveCriticalSection(&(d2d.cs));
-            wp = UI_NOTIFY_FILEOPEN;
-            lp = (LPARAM)fileBMP;
-            PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
-
-            ReleaseD2DResource(m);
-            return 0;
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
         }
+
+        d2d.ft = filePNG;
+        m = d2d.pData;
+
+        EnterCriticalSection(&(d2d.cs));
+            d2d.pData = n;
+        LeaveCriticalSection(&(d2d.cs));
+        wp = UI_NOTIFY_FILEOPEN;
+        lp = (LPARAM)fileBMP;
+        PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
+
+        ReleaseD2DResource(m);
+        return 0;
     }
 
 Quit_open_mspfile_thread:
