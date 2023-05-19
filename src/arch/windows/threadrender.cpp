@@ -427,7 +427,7 @@ handle_markdown:
         utf82unicode(q, i, w, 2 * i);
         UINT32 len = (UINT32)wcsnlen_s(w, 2 * (i - 1));
 
-        hr = d2d.pDWriteFactory->CreateTextLayout(w, len, d2d.pTextFormat, 580, 420, &(n->textLayout));
+        hr = d2d.pDWriteFactory->CreateTextLayout(w, len, d2d.pTextFormat, tm.width, 120, &(n->pTextLayout));
         
         if (FAILED(hr))
         {
@@ -439,19 +439,19 @@ handle_markdown:
 
         DWRITE_TEXT_RANGE tr = { 0 };
         tr.startPosition = 2; tr.length = 2;
-        n->textLayout->SetFontSize(36, tr);
+        n->pTextLayout->SetFontSize(36, tr);
 
         tr.startPosition = 8; tr.length = 2;
-        n->textLayout->SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, tr);
+        n->pTextLayout->SetFontWeight(DWRITE_FONT_WEIGHT_BOLD, tr);
 
         tr.startPosition = 12; tr.length = 4;
-        n->textLayout->SetUnderline(TRUE, tr);
+        n->pTextLayout->SetUnderline(TRUE, tr);
 
         tr.startPosition = 18; tr.length = 5;
-        n->textLayout->SetFontStyle(DWRITE_FONT_STYLE_ITALIC, tr);
+        n->pTextLayout->SetFontStyle(DWRITE_FONT_STYLE_ITALIC, tr);
 
         tr.startPosition = 22; tr.length = 10;
-        n->textLayout->SetStrikethrough(TRUE, tr);
+        n->pTextLayout->SetStrikethrough(TRUE, tr);
 
         d2d.ft = fileMD;
         m = d2d.pData;

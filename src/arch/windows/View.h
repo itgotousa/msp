@@ -4,6 +4,57 @@
 
 #pragma once
 
+////////////////////////////////////////
+// COM help.
+
+// Releases a COM object and nullifies pointer.
+template <typename InterfaceType>
+inline void SafeRelease(InterfaceType** currentObject)
+{
+	if (*currentObject != NULL)
+	{
+		(*currentObject)->Release();
+		*currentObject = NULL;
+	}
+}
+
+// Acquires an additional reference, if non-null.
+template <typename InterfaceType>
+inline InterfaceType* SafeAcquire(InterfaceType* newObject)
+{
+	if (newObject != NULL)
+		newObject->AddRef();
+
+	return newObject;
+}
+
+// Sets a new COM object, releasing the old one.
+template <typename InterfaceType>
+inline void SafeSet(InterfaceType** currentObject, InterfaceType* newObject)
+{
+	SafeAcquire(newObject);
+	SafeRelease(currentObject);
+	*currentObject = newObject;
+}
+
+
+// Releases a COM object and nullifies pointer.
+template <typename InterfaceType>
+inline InterfaceType* SafeDetach(InterfaceType** currentObject)
+{
+	InterfaceType* oldObject = *currentObject;
+	*currentObject = NULL;
+	return oldObject;
+}
+
+// Sets a new COM object, acquiring the reference.
+template <typename InterfaceType>
+inline void SafeAttach(InterfaceType** currentObject, InterfaceType* newObject)
+{
+	SafeRelease(currentObject);
+	*currentObject = newObject;
+}
+
 // Default DPI that maps image resolution directly to screen resoltuion
 const FLOAT DEFAULT_DPI = 96.f; 
 
@@ -16,6 +67,22 @@ inline LONG RectHeight(RECT rc)
 {
     return rc.bottom - rc.top;
 }
+
+struct CaretFormat
+{
+	// The important range based properties for the current caret.
+	// Note these are stored outside the layout, since the current caret
+	// actually has a format, independent of the text it lies between.
+	wchar_t fontFamilyName[100];
+	wchar_t localeName[LOCALE_NAME_MAX_LENGTH];
+	FLOAT fontSize;
+	DWRITE_FONT_WEIGHT fontWeight;
+	DWRITE_FONT_STRETCH fontStretch;
+	DWRITE_FONT_STYLE fontStyle;
+	UINT32 color;
+	BOOL hasUnderline;
+	BOOL hasStrikethrough;
+};
 
 class CView : public CScrollWindowImpl<CView>
 {
@@ -50,6 +117,44 @@ private:
         DM_PREVIOUS   = 3 
     };
 
+	////////////////////
+	// Selection/Caret navigation
+	///
+	// caretAnchor equals caretPosition when there is no selection.
+	// Otherwise, the anchor holds the point where shift was held
+	// or left drag started.
+	//
+	// The offset is used as a sort of trailing edge offset from
+	// the caret position. For example, placing the caret on the
+	// trailing side of a surrogate pair at the beginning of the
+	// text would place the position at zero and offset of two.
+	// So to get the absolute leading position, sum the two.
+	UINT32 m_caretAnchor;
+	UINT32 m_caretPosition;
+	UINT32 m_caretPositionOffset;    // > 0 used for trailing edge
+
+	// Current attributes of the caret, which can be independent of the text.
+	CaretFormat m_caretFormat;
+
+	////////////////////
+	// Mouse manipulation
+	bool m_currentlySelecting : 1;
+	bool m_currentlyPanning : 1;
+	float m_previousMouseX;
+	float m_previousMouseY;
+
+	enum { MouseScrollFactor = 10 };
+
+	////////////////////
+	// Current view
+	float m_scaleX;          // horizontal scaling
+	float m_scaleY;          // vertical scaling
+	float m_angle;           // in degrees
+	float m_originX;         // focused point in document (moves on panning and caret navigation)
+	float m_originY;
+	float m_contentWidth;    // page size - margin left - margin right (can be fixed or variable)
+	float m_contentHeight;
+
 	BOOL	m_timerStart;
 	BOOL	m_InitSize;
 	UINT32	m_width;
@@ -76,6 +181,9 @@ public:
 		m_InitSize = FALSE;
 		m_width = m_height = 0;
 		ZeroMemory(&m_Am, sizeof(AnimationData));
+
+		InitDefaults();
+		InitViewDefaults();
 	}
 
 	~CView()
@@ -359,8 +467,11 @@ public:
 
 	BEGIN_MSG_MAP(CView)
 		CHAIN_MSG_MAP(CScrollWindowImpl<CView>)
+		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBkgnd)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_LBUTTONDOWN, OnLBtnDown)
+		MESSAGE_HANDLER(WM_VSCROLL, OnVScroll)
+		MESSAGE_HANDLER(WM_HSCROLL, OnHScroll)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_UI_NOTIFY, OnUINotify)
 		MESSAGE_HANDLER(WM_DROPFILES, OnDropFiles)
@@ -372,6 +483,11 @@ public:
 //	LRESULT MessageHandler(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 //	LRESULT CommandHandler(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 //	LRESULT NotifyHandler(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL& /*bHandled*/)
+	LRESULT OnEraseBkgnd(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+	{
+		return TRUE; // don't want flicker
+	}
+
 	LRESULT OnCreate(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
 		DragAcceptFiles(); /* accept the drag and drop file */
@@ -387,6 +503,79 @@ public:
 			m_pRenderTarget->Release();
 			m_pRenderTarget = NULL;
 		}
+		return 0;
+	}
+
+	void OnScroll(UINT message, UINT request)
+	{
+		SCROLLINFO scrollInfo = { sizeof(scrollInfo) };
+		scrollInfo.fMask = SIF_ALL;
+
+		int barOrientation = (message == WM_VSCROLL) ? SB_VERT : SB_HORZ;
+
+		if (!GetScrollInfo(barOrientation, &scrollInfo)) return;
+
+		// Save the position for comparison later on
+		int oldPosition = scrollInfo.nPos;
+
+		switch (request)
+		{
+		case SB_TOP:        scrollInfo.nPos = scrollInfo.nMin;		break;
+		case SB_BOTTOM:     scrollInfo.nPos = scrollInfo.nMax;      break;
+		case SB_LINEUP:     scrollInfo.nPos -= 10;                  break;
+		case SB_LINEDOWN:   scrollInfo.nPos += 10;                  break;
+		case SB_PAGEUP:     scrollInfo.nPos -= scrollInfo.nPage;    break;
+		case SB_PAGEDOWN:   scrollInfo.nPos += scrollInfo.nPage;    break;
+		case SB_THUMBTRACK: scrollInfo.nPos = scrollInfo.nTrackPos; break;
+		default:
+			break;
+		}
+
+		if (scrollInfo.nPos < 0) scrollInfo.nPos = 0;
+		if (scrollInfo.nPos > scrollInfo.nMax - signed(scrollInfo.nPage))
+			scrollInfo.nPos = scrollInfo.nMax - scrollInfo.nPage;
+
+		scrollInfo.fMask = SIF_POS;
+		SetScrollInfo(barOrientation, &scrollInfo, TRUE);
+
+		// If the position has changed, scroll the window 
+		if (scrollInfo.nPos != oldPosition)
+		{
+			// Need the view matrix in case the editor is flipped/mirrored/rotated.
+#if 0
+			D2D1::Matrix3x2F pageTransform;
+			GetInverseViewMatrix(&Cast(pageTransform));
+
+			float inversePos = float(scrollInfo.nMax - scrollInfo.nPage - scrollInfo.nPos);
+
+			D2D1_POINT_2F scaledSize = { pageTransform._11 + pageTransform._21,
+										pageTransform._12 + pageTransform._22 };
+
+			// Adjust the correct origin.
+			if ((barOrientation == SB_VERT) ^ IsLandscapeAngle(angle_))
+			{
+				originY_ = float(scaledSize.y >= 0 ? scrollInfo.nPos : inversePos);
+			}
+			else
+			{
+				originX_ = float(scaledSize.x >= 0 ? scrollInfo.nPos : inversePos);
+			}
+
+			ConstrainViewOrigin();
+			PostRedraw();
+#endif
+		}
+	}
+
+	LRESULT OnVScroll(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+	{
+		OnScroll(uMsg, LOWORD(wParam));
+		return 0;
+	}
+
+	LRESULT OnHScroll(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+	{
+		OnScroll(uMsg, LOWORD(wParam));
 		return 0;
 	}
 
@@ -449,6 +638,86 @@ public:
 		return 0;
 	}
 
+	void InitDefaults()
+	{
+		m_caretPosition = 0;
+		m_caretAnchor = 0;
+		m_caretPositionOffset = 0;
+
+		m_currentlySelecting = false;
+		m_currentlyPanning = false;
+		m_previousMouseX = 0;
+		m_previousMouseY = 0;
+	}
+
+	void InitViewDefaults()
+	{
+		m_scaleX = 1;
+		m_scaleY = 1;
+		m_angle = 0;
+		m_originX = 0;
+		m_originY = 0;
+	}
+
+	void UpdateCaretFormatting(IDWriteTextLayout* textLayout)
+	{
+		UINT32 currentPos = m_caretPosition + m_caretPositionOffset;
+
+		if (currentPos > 0)
+		{
+			--currentPos; // Always adopt the trailing properties.
+		}
+
+		// Get the family name
+		m_caretFormat.fontFamilyName[0] = '\0';
+		textLayout->GetFontFamilyName(currentPos, &m_caretFormat.fontFamilyName[0], ARRAYSIZE(m_caretFormat.fontFamilyName));
+
+		// Get the locale
+		m_caretFormat.localeName[0] = '\0';
+		textLayout->GetLocaleName(currentPos, &m_caretFormat.localeName[0], ARRAYSIZE(m_caretFormat.localeName));
+
+		// Get the remaining attributes...
+		textLayout->GetFontWeight(currentPos, &m_caretFormat.fontWeight);
+		textLayout->GetFontStyle(currentPos, &m_caretFormat.fontStyle);
+		textLayout->GetFontStretch(currentPos, &m_caretFormat.fontStretch);
+		textLayout->GetFontSize(currentPos, &m_caretFormat.fontSize);
+		textLayout->GetUnderline(currentPos, &m_caretFormat.hasUnderline);
+		textLayout->GetStrikethrough(currentPos, &m_caretFormat.hasStrikethrough);
+
+		// Get the current color.
+		m_caretFormat.color = 0;
+#if 0
+		IUnknown* drawingEffect = NULL;
+		textLayout->GetDrawingEffect(currentPos, &drawingEffect);
+		if (drawingEffect != NULL)
+		{
+			DrawingEffect& effect = *reinterpret_cast<DrawingEffect*>(drawingEffect);
+			caretFormat.color = effect.GetColor();
+		}
+
+		SafeRelease(&drawingEffect);
+#endif
+	}
+
+	void InitMarkDownLayout()
+	{
+		D2DRenderNode	n;
+		float layoutWidth;
+		float layoutHeight;
+
+		EnterCriticalSection(&(d2d.cs));
+		n = d2d.pData;
+		if (NULL != n)
+		{
+			layoutWidth = n->pTextLayout->GetMaxWidth();
+			layoutHeight = n->pTextLayout->GetMaxHeight();
+
+			m_originX = layoutWidth / 2;
+			m_originY = layoutHeight / 2;
+		}
+		LeaveCriticalSection(&(d2d.cs));
+	}
+
 	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
 	{
 		D2DRenderNode	n;
@@ -464,7 +733,9 @@ public:
 
 			switch(ft)
 			{
-				case fileGIF	:
+			case fileMD		:
+				InitMarkDownLayout();
+			case fileGIF	:
 #if 0				
 					ZeroMemory(&m_Am, sizeof(AnimationData));
 					EnterCriticalSection(&(d2d.cs));
@@ -485,19 +756,18 @@ public:
 						
 					}
 #endif 					
-				case filePNG	:
-				case fileBMP	:
-				case fileJPG	:
-				case fileSVG	:
-				case fileMD		:
-					m_InitSize = FALSE;  // we need to check the size of the image of the next painting
-					//SetScrollSize(m_width, m_height);
-					InvalidateRect(NULL);
-					UpdateWindow();
-					break;
-				default:
-					//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
-					return 0;
+			case filePNG	:
+			case fileBMP	:
+			case fileJPG	:
+			case fileSVG	:
+				m_InitSize = FALSE;  // we need to check the size of the image of the next painting
+				//SetScrollSize(m_width, m_height);
+				InvalidateRect(NULL);
+				UpdateWindow();
+				break;
+			default:
+				//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
+				return 0;
 			}
 		}
 
@@ -536,7 +806,7 @@ public:
 //		target->DrawText((const WCHAR *)n->data, n->len, d2d.pTextFormat, layoutRect, brush);
 		
 		D2D1_POINT_2F  origin = { 0 };
-		m_pRenderTarget->DrawTextLayout(origin, n->textLayout, brush);
+		m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
 
 		brush->Release();
 		brush = NULL;

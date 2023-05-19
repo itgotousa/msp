@@ -32,6 +32,35 @@ typedef enum
 
 #define SAFERELEASE(p)  do { if(NULL != (p)) { (p)->Release(); (p) = NULL; } } while(0)
 
+#define MSP_DEFAULT_FONT    (L"Arial")
+#define MSP_BUILDIN_FONT    (L"OPlusSans 3.0")
+
+typedef struct ThemeData
+{
+    unsigned short  top_margin;
+    unsigned short  bottom_margin;
+    unsigned short  width;
+    unsigned char   width_type; /* pixel or percentage */
+    unsigned char   svgpng_aligment; /* LCR : left, center, right */
+    unsigned int    text_color; /* RGBA */
+    unsigned short  text_size;
+    wchar_t*        text_font;
+    wchar_t*        h1_font;
+    wchar_t*        h2_font;
+    wchar_t*        h3_font;
+    wchar_t*        h4_font;
+    wchar_t*        h5_font;
+    wchar_t*        h6_font;
+    unsigned short  h1_size;
+    unsigned short  h2_size;
+    unsigned short  h3_size;
+    unsigned short  h4_size;
+    unsigned short  h5_size;
+    unsigned short  h6_size;
+} ThemeData;
+
+typedef struct ThemeData* Theme;
+
 typedef struct AnimationData
 {
     UINT            cxImage;
@@ -61,7 +90,7 @@ typedef struct D2DRenderNodeData
     IWICFormatConverter*    pConverter;
     ID2D1PathGeometry*      pGeometry;
     ID2D1StrokeStyle*       pStrokeStyle;
-    IDWriteTextLayout*      textLayout;
+    IDWriteTextLayout*      pTextLayout;
 } D2DRenderNodeData;
 
 typedef struct D2DRenderNodeData *D2DRenderNode;
@@ -79,10 +108,6 @@ typedef struct D2DContextData
     D2DRenderNode        pData;
     D2DRenderNode        pDataDefault;
     FontResources*       fontResource;
-//    BYTE*               fontData;
-//    DWORD               fontDataSize;
-//    IDWriteFontSet*     fontSet;
-//    IDWriteFontCollection1* fontCollection;
     IDWriteInMemoryFontFileLoader* fontLoader;
 } D2DContextData;
 
@@ -98,8 +123,8 @@ extern BOOL    g_monitor;
 extern HANDLE  g_kaSignal[2];
 extern LONG    g_threadCount;
 
-extern  D2DContextData d2d;
-
+extern D2DContextData d2d;
+extern ThemeData tm;
 extern void ReleaseD2DResource(D2DRenderNode n);
 
 void render_svg_logo(const char*);

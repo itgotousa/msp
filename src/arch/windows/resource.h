@@ -7,7 +7,7 @@
 
 #define IDD_ABOUTBOX				100
 #define IDR_MAINFRAME				128
-#define IDR_FONT_HARMONYOS_THIN     129
+#define IDR_DEFAULT_FONT            129
 //#define IDR_MSPTYPE	129
 #define ID_FILE_NEW_WINDOW			32771
 
