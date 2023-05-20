@@ -208,10 +208,10 @@ public:
 
 	void DrawDefault()
 	{
-#if 0
 		D2DRenderNode n = d2d.pDataDefault;
 		HRESULT hr = S_OK;
 		ID2D1Bitmap* bmp = NULL;
+
 		if(NULL == n) return;
 		if(NULL == n->pConverter) return;
 
@@ -235,23 +235,26 @@ public:
 
 			m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 			m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
+
+			POINT pt;
+			GetScrollOffset(pt);
+
 			D2D1_RECT_F srcRect = D2D1::RectF(
-				static_cast<float>(x),
-				static_cast<float>(y),
-				static_cast<float>(x + width),
-				static_cast<float>(y + height));				
+				static_cast<float>(-pt.x + x),
+				static_cast<float>(-pt.y + y),
+				static_cast<float>(x + width - pt.x),
+				static_cast<float>(y + height - pt.y));
+
 			m_pRenderTarget->DrawBitmap(bmp, &srcRect);
-			bmp->Release();
-			bmp = NULL;
+
+			SAFERELEASE(bmp);
 
 			hr = m_pRenderTarget->EndDraw();
 			if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 			{
-				m_pRenderTarget->Release();
-				m_pRenderTarget = NULL;
+				SAFERELEASE(m_pRenderTarget);
 			}			
 		}
-#endif
 	}
 
 	void CalculateLayout()
@@ -682,7 +685,7 @@ public:
 		if (SUCCEEDED(hr))
 		{
 			// Draw the bitmap onto the calculated rectangle
-			m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+			m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 			m_pRenderTarget->DrawBitmap(bmp, &srcRect);
 		}
 

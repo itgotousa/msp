@@ -222,25 +222,59 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
 void render_svg_logo(const char* logoSVG)
 {
     d2d.pDataDefault = NULL;
-#if 0    
-    plutovg_surface_t* surface;
-    
+  
     size_t size = strlen(logoSVG);
 
-    surface = plutosvg_load_from_memory(logoSVG, size, NULL, 0, 0, 96.0);
-    if(NULL == surface) return;
+    std::uint32_t width = 0, height = 0;
+    std::uint32_t bgColor = 0x00000000;
+    auto document = Document::loadFromData((const char*)logoSVG, (std::size_t)size);
+    if (!document) return;
 
-    D2DRenderNode n = _compose_png_data(surface);
+    auto bitmap = document->renderToBitmap(width, height, bgColor);
+    if (bitmap.valid())
+    {
+        bitmap.convertToRGBA();
 
-    plutovg_surface_destroy(surface);
+        MemoryContext mcxt = AllocSetContextCreate(TopMemoryContext, "SVGLogo-Cxt", ALLOCSET_DEFAULT_SIZES);
+        if (NULL != mcxt)
+        {
+            MemoryContextSwitchTo(mcxt);
+            D2DRenderNode n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+            n->std.type = MSP_TYPE_IMAGE;
+            n->std.next = NULL;
+            n->std.width = int(bitmap.width());
+            n->std.height = int(bitmap.height());
 
-    if(NULL == n) return;
-    d2d.ft = filePNG;
-    d2d.pDataDefault = n;
-   
-    ReleaseD2DResource(d2d.pData);
-#endif 
-
+            int len;
+            unsigned char* png = stbi_write_png_to_mem(bitmap.data(), 0, n->std.width, n->std.height, 4, &len);
+            if (NULL != png)
+            {
+                n->std.flag |= MSP_HINT_PNG;
+                n->std.length = len;
+                n->std.data = (unsigned char*)palloc(len);
+                if (NULL != n->std.data)
+                {
+                    memcpy(n->std.data, png, len);
+                    HRESULT hr = _create_device_independance_D2D(n);
+                    if (SUCCEEDED(hr))
+                    {
+                        d2d.pDataDefault = n;
+                    }
+                    else
+                    {
+                        MemoryContextDelete(mcxt);
+                        d2d.pDataDefault = NULL;
+                    }
+                }
+                free(png);
+            }
+            else
+            {
+                MemoryContextDelete(mcxt);
+                d2d.pDataDefault = NULL;
+            }
+        }
+    }
 }
 
 
