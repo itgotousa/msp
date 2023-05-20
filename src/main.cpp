@@ -1,4 +1,5 @@
 
+#if 0
 #ifndef _WIN32
 
 #include <stdio.h>
@@ -63,4 +64,5 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+#endif 
 #endif 

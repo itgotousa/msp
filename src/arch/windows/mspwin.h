@@ -85,7 +85,7 @@ typedef struct AnimationData *Animation;
 typedef struct D2DRenderNodeData
 {
     RenderNodeData          std;
-    Animation               am;
+    AnimationData           am;
     IWICStream*             pStream;
     IWICBitmapDecoder*      pDecoder;
     IWICBitmapFrameDecode*  pFrame;

@@ -10,8 +10,8 @@
 #include <atlscrl.h>
 #include <memory>
 
-#include "svg.h"
-
+#include "msp.h"
+#include "pgcore.h"
 #include "resource.h"
 #include "mspwin.h"
 #include "View.h"

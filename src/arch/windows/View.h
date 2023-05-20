@@ -82,7 +82,7 @@ public:
 	CView() : m_pRenderTarget(NULL), m_pFrameComposeRT(NULL), m_pSavedFrame(NULL), m_pRawFrame(NULL)
 	{
 		ZeroMemory(&m_Am, sizeof(AnimationData));
-
+		m_timerStart = FALSE;
 		InitDefaults();
 		InitViewDefaults();
 	}
@@ -123,7 +123,7 @@ private:
 		DM_PREVIOUS = 3
 	};
 
-	////////////////////
+	////////////////////////////////////////////////////////////////
 	// Selection/Caret navigation
 	///
 	// caretAnchor equals caretPosition when there is no selection.
@@ -182,11 +182,11 @@ private:
 		m_originY = 0;
 	}
 
-	BOOL	m_timerStart;
-	AnimationData m_Am;
+	BOOL			m_timerStart;
+	AnimationData	m_Am;
 
-	ID2D1HwndRenderTarget* m_pRenderTarget;
-	ID2D1BitmapRenderTarget* m_pFrameComposeRT;
+	ID2D1HwndRenderTarget*		m_pRenderTarget;
+	ID2D1BitmapRenderTarget*	m_pFrameComposeRT;
 	// The temporary bitmap used for disposal 3 method
 	ID2D1Bitmap* m_pSavedFrame;
 	ID2D1Bitmap* m_pRawFrame;
@@ -307,6 +307,11 @@ public:
 
 		if (SUCCEEDED(hr))
 		{
+			SIZE sz;
+			GetScrollSize(sz);
+			if (sz.cx > rcClient.right)  rcClient.right = sz.cx;
+			if (sz.cy > rcClient.bottom) rcClient.bottom = sz.cy;
+
 			if (NULL == m_pRenderTarget)
 			{
 				m_Am.frameIndex = 0;
@@ -331,7 +336,18 @@ public:
 					renderTargetProperties,
 					hwndRenderTragetproperties,
 					&m_pRenderTarget);
+
+				if (SUCCEEDED(hr))
+				{
+					SAFERELEASE(m_pFrameComposeRT);
+					hr = m_pRenderTarget->CreateCompatibleRenderTarget(
+						D2D1::SizeF(
+							static_cast<FLOAT>(RectWidth(rcClient)),
+							static_cast<FLOAT>(RectHeight(rcClient))),
+						&m_pFrameComposeRT);
+				}
 			}
+#if 0
 			else
 			{
 				// We already have a hwnd render target, resize it to the window size
@@ -340,18 +356,7 @@ public:
 				size.height = RectHeight(rcClient);
 				hr = m_pRenderTarget->Resize(size);
 			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Create a bitmap render target used to compose frames. Bitmap render 
-			// targets cannot be resized, so we always recreate it.
-			SAFERELEASE(m_pFrameComposeRT);
-			hr = m_pRenderTarget->CreateCompatibleRenderTarget(
-				D2D1::SizeF(
-					static_cast<FLOAT>(RectWidth(rcClient)),
-					static_cast<FLOAT>(RectHeight(rcClient))),
-				&m_pFrameComposeRT);
+#endif
 		}
 
 		return hr;
@@ -412,12 +417,10 @@ public:
 #endif
 	}
 
-
 	DWRITE_TEXT_RANGE GetSelectionRange(D2DRenderNode n)
 	{
 		// Returns a valid range of the current selection,
 		// regardless of whether the caret or anchor is first.
-
 		UINT32 caretBegin = m_caretAnchor;
 		UINT32 caretEnd = m_caretPosition + m_caretPositionOffset;
 		if (caretBegin > caretEnd)
@@ -643,89 +646,47 @@ public:
 	void DrawMSPImage(D2DRenderNode n)
 	{
 		HRESULT hr = S_OK;
-		ID2D1Bitmap* b = NULL;
+		ID2D1Bitmap* bmp = NULL;
 
-#if 0
-		if (n->std.flag | SO_HINT_BITMAP)
-		{
-			hr = m_pRenderTarget->CreateBitmap(
-				D2D1::SizeU(n->std.width, n->std.height),
-				n->std.data,
-				n->std.stride,
-				D2D1::BitmapProperties(
-					D2D1::PixelFormat(
-						DXGI_FORMAT_B8G8R8A8_UNORM,
-						D2D1_ALPHA_MODE_IGNORE
-					)
-				),
-				&b
-			);
-			if (SUCCEEDED(hr))
-			{
-				if (NULL != b)
-				{
-					POINT pt;
-					if (!m_InitSize)
-					{
-						D2D1_SIZE_U s = b->GetPixelSize();
-						m_width = s.width;
-						m_height = s.height;
-						m_InitSize = TRUE;
-						SetScrollSize(m_width, m_height);
-					}
-					GetScrollOffset(pt);
-					D2D1_RECT_F srcRect = D2D1::RectF(
-						static_cast<float>(-pt.x),
-						static_cast<float>(-pt.y),
-						static_cast<float>(m_width - pt.x),
-						static_cast<float>(m_height - pt.y));
-					m_pRenderTarget->DrawBitmap(b, &srcRect);
-					SAFERELEASE(b);
-				}
-			}
-
-			return;
-		}
-#endif 
 		if (NULL == n->pConverter) return;
-#if 0
-		if (fileGIF == d2d.ft)
-		{
-			ID2D1Bitmap* pFrameToRender = NULL;
-			//D2D1_RECT_F drawRect;
-			//hr = CalculateDrawRectangle(drawRect);
-			if (SUCCEEDED(hr))
-			{
-				// Get the bitmap to draw on the hwnd render target
-				hr = m_pFrameComposeRT->GetBitmap(&pFrameToRender);
-			}
 
-			if (SUCCEEDED(hr))
-			{
-				// Draw the bitmap onto the calculated rectangle
-				m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-				m_pRenderTarget->DrawBitmap(pFrameToRender, m_Am.framePosition);
-				SAFERELEASE(pFrameToRender);
-			}
+		POINT pt;
+		GetScrollOffset(pt);
+
+		D2D1_RECT_F srcRect = D2D1::RectF(
+			static_cast<float>(-pt.x),
+			static_cast<float>(-pt.y),
+			static_cast<float>(n->std.width - pt.x),
+			static_cast<float>(n->std.height - pt.y));
+
+		if (0 && n->am.frameCount > 1)
+		{
+			// Get the bitmap to draw on the hwnd render target
+			//hr = m_pFrameComposeRT->GetBitmap(&bmp);
+			IWICBitmapFrameDecode* pf;
+			IWICFormatConverter* pc;
+			hr = n->pDecoder->GetFrame(m_Am.frameIndex, &(pf));
+			m_Am.frameIndex++;
+			if (m_Am.frameIndex >= m_Am.frameCount) m_Am.frameIndex = 0;
+			hr = d2d.pIWICFactory->CreateFormatConverter(&(pc));
+			pc->Initialize(pf, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.0, WICBitmapPaletteTypeMedianCut);
+			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(pc, NULL, &bmp);
+			SAFERELEASE(pf);
+			SAFERELEASE(pc);
 		}
 		else
-#endif
 		{
-			m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &b);
-			if (NULL != b)
-			{
-				POINT pt;
-				GetScrollOffset(pt);
-				D2D1_RECT_F srcRect = D2D1::RectF(
-					static_cast<float>(-pt.x),
-					static_cast<float>(-pt.y),
-					static_cast<float>(n->std.width - pt.x),
-					static_cast<float>(n->std.height - pt.y));
-				m_pRenderTarget->DrawBitmap(b, &srcRect);
-
-				SAFERELEASE(b);
-			}
+			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
 		}
+
+		if (SUCCEEDED(hr))
+		{
+			// Draw the bitmap onto the calculated rectangle
+			m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+			m_pRenderTarget->DrawBitmap(bmp, &srcRect);
+		}
+
+		SAFERELEASE(bmp);
 	}
 
 	void DoPaint(CDCHandle dc)
@@ -742,7 +703,6 @@ public:
 			return;
 		}
 
-		unsigned int so_type;
 		D2DRenderNode	n = d2d.pData;
 		
 		m_pRenderTarget->BeginDraw();
@@ -750,16 +710,15 @@ public:
 		m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 		while(NULL != n)
 		{
-			so_type = (0x03 & n->std.flag);
-			switch(so_type)
+			switch(n->std.type)
 			{
-				case SO_TYPE_GRAPHIC	:	
+				case MSP_TYPE_GRAPHIC	:	
 						DrawMSPGraphic(n);
 						break;
-				case SO_TYPE_TEXT		:	
+				case MSP_TYPE_TEXT		:	
 						DrawMSPText(n);
 						break;
-				case SO_TYPE_IMAGE		:
+				case MSP_TYPE_IMAGE		:
 						DrawMSPImage(n);
 						break;
 				default					:	
@@ -1431,6 +1390,8 @@ public:
 		{
 			m_currentlyPanning = FALSE;
 		}
+
+		return 0;
 	}
 
 	void UpdateScrollInfo()
@@ -1536,6 +1497,7 @@ public:
 			::PostMessage(GetTopLevelParent(), WM_NCLBUTTONDOWN, HTCAPTION, lParam);
 		}
 		if (NULL == d2d.pData) return 0;
+		if (MSP_TYPE_IMAGE == d2d.pData->std.type) return 0;
 		
 		SetFocus();
 		SetCapture();
@@ -1846,63 +1808,62 @@ public:
 
 	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
 	{
-		D2DRenderNode n;
 		UINT32 w = 1, h = 1;
 
-//		DWORD tid = GetCurrentThreadId();
-
-		if(UI_NOTIFY_FILEOPEN == wParam)
+		if (UI_NOTIFY_FILEOPEN != wParam)
 		{
-			if(m_timerStart) {
-				KillTimer(ANIMATION_TIMER_ID);
-				m_timerStart = FALSE;
-			}
+			return 0;
+		}
 
-			fileType ft = (fileType)lParam;
+		D2DRenderNode n = d2d.pData;
+		EnterCriticalSection(&(d2d.cs));
+			d2d.pData = d2d.pData0;
+			d2d.pData0 = NULL;
+		LeaveCriticalSection(&(d2d.cs));
 
-			switch(ft)
+		ReleaseD2DResource(n);
+		if (NULL == d2d.pData) return 0;
+
+		SetScrollSize((d2d.pData)->std.width, (d2d.pData)->std.height);
+
+		n = d2d.pData;
+
+		if(m_timerStart) {
+			KillTimer(ANIMATION_TIMER_ID);
+			m_timerStart = FALSE;
+		}
+
+		fileType ft = (fileType)lParam;
+		if (MSP_TYPE_IMAGE == n->std.type)
+		{
+			if (MSP_HINT_PNG & n->std.flag) ft = filePNG;
+			if (MSP_HINT_GIF & n->std.flag) ft = fileGIF;
+			if (MSP_HINT_BMP & n->std.flag) ft = fileBMP;
+		}
+
+		switch(ft)
+		{
+		case fileMD		:
+			//InitMarkDownLayout();
+		case fileGIF	:
+			//ZeroMemory(&m_Am, sizeof(AnimationData));
+			if (n->am.frameCount > 1) // it is animation GIF
 			{
-			case fileMD		:
-				InitMarkDownLayout();
-			case fileGIF	:
-#if 0				
-					ZeroMemory(&m_Am, sizeof(AnimationData));
-					EnterCriticalSection(&(d2d.cs));
-						n = d2d.pData;
-						if(NULL != n)
-						{
-							if(NULL != n->am)
-							{
-								// cache it!
-								memcpy_s(&m_Am, sizeof(AnimationData), n->am, sizeof(AnimationData));
-							}
-						}
-					LeaveCriticalSection(&(d2d.cs));
-					if(m_Am.frameCount > 1 ) // it is animation GIF
-					{
-						ComposeNextFrame();
-						if(0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL)) m_timerStart = TRUE;
-						
-					}
-#endif 					
-			case filePNG	:
-			case fileBMP	:
-			case fileJPG	:
-			case fileSVG	:
-				n = d2d.pData;
-				EnterCriticalSection(&(d2d.cs));
-					d2d.pData = d2d.pData0;
-					d2d.pData0 = NULL;
-				LeaveCriticalSection(&(d2d.cs));
-				if (NULL != n)	SetScrollSize(n->std.width, n->std.height);
-				InvalidateRect(NULL);
-				UpdateWindow();
-				ReleaseD2DResource(n);
-				break;
-			default:
-				//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
-				return 0;
+				m_Am = n->am;
+				ComposeNextFrame();
+				if (0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL))
+					m_timerStart = TRUE;
 			}
+		case filePNG	:
+		case fileBMP	:
+		case fileJPG	:
+		case fileSVG	:
+			InvalidateRect(NULL);
+			UpdateWindow();
+			break;
+		default:
+			//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
+			return 0;
 		}
 
 		return 0;
@@ -1918,7 +1879,7 @@ public:
 	*  composed frame.                                                *
 	*                                                                 *
 	******************************************************************/
-
+#if 0
 	HRESULT CalculateDrawRectangle(D2D1_RECT_F &drawRect)
 	{
 		HRESULT hr = S_OK;
@@ -1967,7 +1928,7 @@ public:
 
 		return hr;
 	}
-
+#endif
 	/******************************************************************
 	*                                                                 *
 	*  ClearCurrentFrameArea() 			                              *
@@ -1977,7 +1938,6 @@ public:
 	*  color.                                                         *
 	*                                                                 *
 	******************************************************************/
-
 	HRESULT ClearCurrentFrameArea()
 	{
 		HRESULT hr = S_FALSE;
@@ -2005,7 +1965,6 @@ public:
 	*  target.                                                        *
 	*                                                                 *
 	******************************************************************/
-
 	HRESULT RestoreSavedFrame()
 	{
 		HRESULT hr = S_OK;
@@ -2038,7 +1997,6 @@ public:
 	*  based on the disposal method specified.                        *
 	*                                                                 *
 	******************************************************************/
-
 	HRESULT DisposeCurrentFrame()
 	{
 		HRESULT hr = S_OK;
@@ -2076,7 +2034,6 @@ public:
 	*  file without composing.                                        *
 	*                                                                 *
 	******************************************************************/
-
 	HRESULT GetRawFrame(UINT uFrameIndex)
 	{
 		HRESULT hr = E_FAIL;
@@ -2089,13 +2046,10 @@ public:
 
 		// Retrieve the current frame
 		D2DRenderNode n = d2d.pData;
-		if(NULL != n)
-		{
-			if(NULL != n->pDecoder)
-			{
-				hr = n->pDecoder->GetFrame(uFrameIndex, &pWicFrame);
-			}
-		}
+		if (NULL == n) return hr;
+		if (NULL == n->pDecoder) return hr;
+
+		hr = n->pDecoder->GetFrame(uFrameIndex, &pWicFrame);
 
 		if (SUCCEEDED(hr))
 		{
@@ -2111,7 +2065,7 @@ public:
 				WICBitmapDitherTypeNone,
 				NULL,
 				0.0,
-				WICBitmapPaletteTypeCustom);
+				WICBitmapPaletteTypeMedianCut);
 		}
 
 		if (SUCCEEDED(hr))
@@ -2370,7 +2324,6 @@ public:
 	*  Also, sets a timer that is equal to the delay of the frame.    *
 	*                                                                 *
 	******************************************************************/
-
 	HRESULT ComposeNextFrame()
 	{
 		HRESULT hr = S_OK;
@@ -2398,7 +2351,7 @@ public:
 					hr = OverlayNextFrame();
 				}
 			}
-
+#if 0
 			// If we have more frames to play, set the timer according to the delay.
 			// Set the timer regardless of whether we succeeded in composing a frame
 			// to try our best to continue displaying the animation.
@@ -2407,6 +2360,7 @@ public:
 				// Set the timer according to the delay
 				//SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL);
 			}
+#endif
 		}
 
 		return hr;

@@ -1,13 +1,23 @@
 #include "stdafx.h"
 #include "pgcore.h"
-#include "svg.h"
+#include "msp.h"
 #include "resource.h"
 #include "mspwin.h"
+#include "libnsgif.h"
 #include "lunasvg.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
 using namespace lunasvg;
+
+#define ALLOCSET_IMAGE_MINSIZE   0
+#define ALLOCSET_IMAGE_INITSIZE  (8 * 1024)
+#define ALLOCSET_IMAGE_MAXSIZE   (32 * 1024 * 1024)
+
+static HRESULT GetBackgroundColor(IWICMetadataQueryReader*,
+    IWICBitmapDecoder*, D2D1_COLOR_F*);
+static BOOL GetAnimationMetaData(D2DRenderNode n);
+
 
 static HRESULT _create_device_independance_D2D(D2DRenderNode n)
 {
@@ -31,6 +41,7 @@ static HRESULT _create_device_independance_D2D(D2DRenderNode n)
             SAFERELEASE(n->pStream);
             return hr;
         }
+
         hr = n->pDecoder->GetFrame(0, &(n->pFrame));
         if (FAILED(hr) || NULL == n->pFrame)
         {
@@ -38,6 +49,14 @@ static HRESULT _create_device_independance_D2D(D2DRenderNode n)
             SAFERELEASE(n->pDecoder);
             return hr;
         }
+
+        GetAnimationMetaData(n);
+#if 0
+        n->am = GetAnimationMetaData(n->pDecoder);
+        n->am.frameCount = 1;
+        hr = n->pDecoder->GetFrameCount(&(n->am.frameCount));
+        if (FAILED(hr)) { n->am.frameCount = 1; }
+#endif
         hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
         if (FAILED(hr) || NULL == n->pConverter)
         {
@@ -61,13 +80,15 @@ static HRESULT _create_device_independance_D2D(D2DRenderNode n)
     return hr;
 }
 
+#define PIC_HEADER_SIZE     32
+
 static D2DRenderNode _read_pic_file(TCHAR* path)
 {
 	int             fd;
     MemoryContext   mcxt = NULL;
     D2DRenderNode   n = NULL;
 	unsigned char  *p;
-    unsigned char   png_header[24] = { 0 };
+    unsigned char   pic_header[PIC_HEADER_SIZE] = { 0 };
 	unsigned int    size, bytes, w = 0, h = 0;
     fileType ft = fileUnKnown;
     HRESULT hr = S_OK;
@@ -76,7 +97,7 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
 	if (0 != _tsopen_s(&fd, path, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) return NULL;
 
 	size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
-	if (size > MAX_BUF_LEN || size < 24) 
+	if (size > MAX_BUF_LEN || size < 32) 
 	{
 	    _close(fd); 
 		return NULL;
@@ -84,14 +105,14 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
 
     _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
     
-    bytes = (unsigned int)_read(fd, png_header, 24);  /* try to detect PNG header */
-    if(24 != bytes) 
+    bytes = (unsigned int)_read(fd, pic_header, PIC_HEADER_SIZE);  /* try to detect PNG header */
+    if(PIC_HEADER_SIZE != bytes)
     {
 	    _close(fd); 
 		return NULL;
     }
     /* check PNG magic number: 89 50 4e 47 0d 0a 1a 0a */
-    p = (unsigned char*)png_header;
+    p = (unsigned char*)pic_header;
     if((0x89 == p[0]) && (0x50 == p[1]) && (0x4e == p[2]) && (0x47 == p[3]) && 
         (0x0d == p[4]) && (0x0a == p[5]) && (0x1a == p[6]) && (0x0a == p[7]))
     {
@@ -107,30 +128,33 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
     {
         ft = fileJPG;
     }
-
+#endif 
 
     if((0x42 == p[0]) && (0x4d == p[1])) /* BMP head magic */
     {
         bytes = *((unsigned int*)(p+2));
         if(size == bytes) ft = fileBMP;
+        w = p[18] + (p[19] << 8) + (p[20] << 16) + (p[21] << 24);
+        h = p[22] + (p[23] << 8) + (p[24] << 16) + (p[25] << 24);
     }
 
     if((0x47 == p[0]) && (0x49 == p[1]) && (0x46 == p[2]) && (0x38 == p[3]) && 
         (0x39 == p[4]) && (0x61 == p[5]))  /* GIF head magic */
     {
         ft = fileGIF;
+        w = p[6] + (p[7] << 8);
+        h = p[8] + (p[9] << 8);
     }
-#endif 
+
 	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
-    //if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
-    if (filePNG != ft)
+    if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
     {
 	    _close(fd); 
 		return NULL;
     }
 
-    mcxt = AllocSetContextCreate(TopMemoryContext, "ImageCxt", ALLOCSET_DEFAULT_SIZES);
+    mcxt = AllocSetContextCreate(TopMemoryContext, "ImageCxt", 0, MAXALIGN(size + 1024), ALLOCSET_IMAGE_MAXSIZE);
     if(NULL == mcxt)
     {
         _close(fd); 
@@ -174,12 +198,16 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
         return NULL;
     }
 
-    n->std.flag     = SO_TYPE_IMAGE;
+    n->std.type     = MSP_TYPE_IMAGE;
     n->std.next     = NULL;
     n->std.data	    = p;
     n->std.length   = size;
     n->std.width    = w;
     n->std.height   = h;
+
+    if (filePNG == ft) n->std.flag |= MSP_HINT_PNG;
+    if (fileGIF == ft) n->std.flag |= MSP_HINT_GIF;
+    if (fileBMP == ft) n->std.flag |= MSP_HINT_BMP;
 
     hr = _create_device_independance_D2D(n);
     if (FAILED(hr))
@@ -215,11 +243,6 @@ void render_svg_logo(const char* logoSVG)
 
 }
 
-#if 0
-static HRESULT GetBackgroundColor(IWICMetadataQueryReader*, 
-                        IWICBitmapDecoder*, D2D1_COLOR_F*);
-static Animation GetAnimationMetaData(IWICBitmapDecoder*);
-#endif
 
 static int utf82unicode(unsigned char* input, int length, LPWSTR output, int max)
 {
@@ -373,7 +396,7 @@ handle_markdown:
         _close(fd); isOpened = FALSE;
 
         n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
-        n->std.flag = SO_TYPE_TEXT;
+        n->std.type = MSP_TYPE_TEXT;
         n->std.next = NULL;
         n->std.data = w;
         n->std.length = len;
@@ -456,7 +479,7 @@ handle_svg:
         if(NULL == mcxt) return NULL;
         MemoryContextSwitchTo(mcxt);
         n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
-        n->std.flag     = SO_TYPE_IMAGE;
+        n->std.type     = MSP_TYPE_IMAGE;
         n->std.next     = NULL;
         n->std.width    = int(bitmap.width());
         n->std.height   = int(bitmap.height());
@@ -514,6 +537,34 @@ Quit_open_mspfile_thread:
     return 0;
 }
 
+//                           Gif Animation Overview
+// In order to play a gif animation, raw frames (which are compressed frames 
+// directly retrieved from the image file) and image metadata are loaded 
+// and used to compose the frames that are actually displayed in the animation 
+// loop (which we call composed frames in this sample).  Composed frames have 
+// the same sizes as the global gif image size, while raw frames can have their own sizes.
+//
+// At the highest level, a gif animation contains a fixed or infinite number of animation
+// loops, in which the animation will be displayed repeatedly frame by frame; once all 
+// loops are displayed, the animation will stop and the last frame will be displayed 
+// from that point.
+//
+// In each loop, first the entire composed frame will be initialized with the background 
+// color retrieved from the image metadata.  The very first raw frame then will be loaded 
+// and directly overlaid onto the previous composed frame (i.e. in this case, the frame 
+// cleared with background color) to produce the first  composed frame, and this frame 
+// will then be displayed for a period that equals its delay.  For any raw frame after 
+// the first raw frame (if there are any), the composed frame will first be disposed based 
+// on the disposal method associated with the previous raw frame. Then the next raw frame 
+// will be loaded and overlaid onto the result (i.e. the composed frame after disposal).  
+// These two steps (i.e. disposing the previous frame and overlaying the current frame) together 
+// 'compose' the next frame to be displayed.  The composed frame then gets displayed.  
+// This process continues until the last frame in a loop is reached.
+//
+// An exception is the zero delay intermediate frames, which are frames with 0 delay 
+// associated with them.  These frames will be used to compose the next frame, but the 
+// difference is that the composed frame will not be displayed unless it's the last frame 
+// in the loop (i.e. we move immediately to composing the next composed frame).
 /******************************************************************
 *                                                                 *
 *  GetBackgroundColor()                                           *
@@ -521,7 +572,6 @@ Quit_open_mspfile_thread:
 *  Reads and stores the background color for gif.                 *
 *                                                                 *
 ******************************************************************/
-#if 0
 static HRESULT GetBackgroundColor(IWICMetadataQueryReader* qr, 
                             IWICBitmapDecoder* de, D2D1_COLOR_F* bc)
 {
@@ -585,8 +635,7 @@ static HRESULT GetBackgroundColor(IWICMetadataQueryReader* qr,
         *bc = D2D1::ColorF(dwBGColor, alpha);
     }
 
-    pWicPalette->Release();
-    pWicPalette = NULL;
+    SAFERELEASE(pWicPalette);
     return hr;
 }
 
@@ -598,7 +647,7 @@ static HRESULT GetBackgroundColor(IWICMetadataQueryReader* qr,
 *                                                                 *
 ******************************************************************/
 
-static Animation GetAnimationMetaData(IWICBitmapDecoder* de)
+static BOOL GetAnimationMetaData(D2DRenderNode n)
 {
     UINT frames;
     PROPVARIANT propValue;
@@ -606,15 +655,24 @@ static Animation GetAnimationMetaData(IWICBitmapDecoder* de)
     IWICMetadataQueryReader *pMetadataQueryReader = NULL;
     HRESULT hr = S_OK;
 
+    IWICBitmapDecoder* de = n->pDecoder;
+    if (NULL == de) return FALSE;
+    
     hr = de->GetFrameCount(&frames);
-    if(1 == frames) return NULL;
-    Animation am = (Animation)palloc0(sizeof(AnimationData));
-    if(NULL == am) return NULL;
+    if (FAILED(hr)) return FALSE;
+
+    if(1 == frames) return FALSE;
+    Animation am = &(n->am);
+
     am->frameCount = frames;
 
     // Create a MetadataQueryReader from the decoder
     hr = de->GetMetadataQueryReader(&pMetadataQueryReader);
-    if(FAILED(hr)) return NULL;
+    if (FAILED(hr))
+    {
+        am->frameCount = 1;
+        return FALSE;
+    }
 
     // Get background color
     if(FAILED(GetBackgroundColor(pMetadataQueryReader, de, &(am->color_bkg))))
@@ -739,8 +797,7 @@ static Animation GetAnimationMetaData(IWICBitmapDecoder* de)
     }
 
     PropVariantClear(&propValue);
-    pMetadataQueryReader->Release();
-    pMetadataQueryReader = NULL;
-    return am;
+    SAFERELEASE(pMetadataQueryReader);
+    return TRUE;
 }
-#endif 
+

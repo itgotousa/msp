@@ -116,7 +116,6 @@ public:
 		{
 			m_view.SetScrollSize(1, 1);
 		}
-		
 
 		UIAddToolBar(hWndToolBar);
 		UISetCheck(ID_VIEW_TOOLBAR, 1);

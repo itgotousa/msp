@@ -9,3 +9,9 @@
 ![](svg/msplogo.svg)
 
 
+		POINT pt;
+		SIZE sz;
+		RECT rc;
+		GetClientRect(&rc);
+		GetScrollSize(sz);
+		GetScrollOffset(pt);

@@ -1,6 +1,7 @@
 #ifndef __SVG_H__
 #define __SVG_H__
 
+#if 0
 #include "pgcore.h"
 
 /* SVG object type */
@@ -26,5 +27,6 @@ typedef struct RenderNodeData
     float           x, y;
     float           a,b,c,d,e,f;
 } RenderNodeData;
+#endif
 
 #endif /* __SVG_H__ */
