@@ -30,6 +30,8 @@ typedef enum
 
 #define ANIMATION_TIMER_ID  123
 
+#define MSP_PI       3.14159265358979323846   // pi
+
 #define SAFERELEASE(p)  do { if(NULL != (p)) { (p)->Release(); (p) = NULL; } } while(0)
 
 #define MSP_DEFAULT_FONT    (L"Arial")
@@ -106,6 +108,7 @@ typedef struct D2DContextData
     fileType             ft;
     CRITICAL_SECTION     cs;
     D2DRenderNode        pData;
+    D2DRenderNode        pData0;
     D2DRenderNode        pDataDefault;
     FontResources*       fontResource;
     IDWriteInMemoryFontFileLoader* fontLoader;

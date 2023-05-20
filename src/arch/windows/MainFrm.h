@@ -43,7 +43,6 @@ public:
 		return 0;
 	}
     
-
 	virtual BOOL PreTranslateMessage(MSG* pMsg)
 	{
 		if(CFrameWindowImpl<CMainFrame>::PreTranslateMessage(pMsg))
@@ -111,7 +110,7 @@ public:
 		D2DRenderNode n = d2d.pDataDefault;
 		if(NULL != n)
 		{
-			m_view.SetScrollSize(n->std.width, n->std.height);
+			m_view.SetScrollSize(tm.width, n->std.height);
 		}
 		else 
 		{

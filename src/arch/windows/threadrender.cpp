@@ -12,86 +12,63 @@ using namespace lunasvg;
 static HRESULT _create_device_independance_D2D(D2DRenderNode n)
 {
     HRESULT hr = E_FAIL;
-    MemoryContext mcxt = NULL;
 
-    if(NULL == n) return E_FAIL;
-    mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
+    if (NULL != n)
+    {
+        hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
+        if (FAILED(hr) || NULL == n->pStream) return hr;
 
-    hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
-    if(FAILED(hr) || NULL == n->pStream)
-    {
-        MemoryContextDelete(mcxt);
-        return hr;
-    }
-    hr = n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.len);
-    if(FAILED(hr))
-    {
-        n->pStream->Release();
-        n->pStream = NULL;
-        MemoryContextDelete(mcxt);
-        return hr;
-    }
-    hr = d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL,
-                            WICDecodeMetadataCacheOnLoad, &(n->pDecoder));
+        hr = n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.length);
+        if (FAILED(hr))
+        {
+            SAFERELEASE(n->pStream);
+            return hr;
+        }
 
-    if(FAILED(hr) || NULL == n->pDecoder)
-    {
-        n->pStream->Release();
-        n->pStream = NULL;
-        MemoryContextDelete(mcxt);
-        return hr;
-    }
-    hr = n->pDecoder->GetFrame(0, &(n->pFrame));
-    if(FAILED(hr) || NULL == n->pFrame)
-    {
-        n->pStream->Release();
-        n->pStream = NULL;
-        n->pDecoder->Release();
-        n->pDecoder = NULL;
-        MemoryContextDelete(mcxt);
-        return hr;
-    }
-    hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
-    if(FAILED(hr) || NULL == n->pConverter)
-    {
-        n->pStream->Release();
-        n->pStream = NULL;
-        n->pDecoder->Release();
-        n->pDecoder = NULL;
-        n->pFrame->Release();
-        n->pFrame = NULL;
-        MemoryContextDelete(mcxt);
-        return hr;
-    }
-    hr = n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, 
-                            NULL, 0.0, WICBitmapPaletteTypeMedianCut);
+        hr = d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL, WICDecodeMetadataCacheOnLoad, &(n->pDecoder));
+        if (FAILED(hr) || NULL == n->pDecoder)
+        {
+            SAFERELEASE(n->pStream);
+            return hr;
+        }
+        hr = n->pDecoder->GetFrame(0, &(n->pFrame));
+        if (FAILED(hr) || NULL == n->pFrame)
+        {
+            SAFERELEASE(n->pStream);
+            SAFERELEASE(n->pDecoder);
+            return hr;
+        }
+        hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
+        if (FAILED(hr) || NULL == n->pConverter)
+        {
+            SAFERELEASE(n->pStream);
+            SAFERELEASE(n->pDecoder);
+            SAFERELEASE(n->pFrame);
+            return hr;
+        }
+        hr = n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone,
+            NULL, 0.0, WICBitmapPaletteTypeMedianCut);
 
-    if(FAILED(hr))
-    {
-        n->pStream->Release();
-        n->pStream = NULL;
-        n->pDecoder->Release();
-        n->pDecoder = NULL;
-        n->pFrame->Release();
-        n->pFrame = NULL;
-        n->pConverter->Release();
-        n->pConverter = NULL;
-
-        MemoryContextDelete(mcxt);
-        return hr;
+        if (FAILED(hr))
+        {
+            SAFERELEASE(n->pStream);
+            SAFERELEASE(n->pDecoder);
+            SAFERELEASE(n->pFrame);
+            SAFERELEASE(n->pConverter);
+            return hr;
+        }
     }
-
-    return S_OK;
+    return hr;
 }
 
-static D2DRenderNode _read_png_file(TCHAR* path)
+static D2DRenderNode _read_pic_file(TCHAR* path)
 {
 	int             fd;
     MemoryContext   mcxt = NULL;
     D2DRenderNode   n = NULL;
 	unsigned char  *p;
-    unsigned char   png_magic[8] = { 0 };
-	unsigned int    size, bytes;
+    unsigned char   png_header[24] = { 0 };
+	unsigned int    size, bytes, w = 0, h = 0;
     fileType ft = fileUnKnown;
     HRESULT hr = S_OK;
 
@@ -99,7 +76,7 @@ static D2DRenderNode _read_png_file(TCHAR* path)
 	if (0 != _tsopen_s(&fd, path, _O_RDONLY | _O_BINARY, _SH_DENYWR, 0)) return NULL;
 
 	size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
-	if (size > MAX_BUF_LEN || size < 8) 
+	if (size > MAX_BUF_LEN || size < 24) 
 	{
 	    _close(fd); 
 		return NULL;
@@ -107,24 +84,30 @@ static D2DRenderNode _read_png_file(TCHAR* path)
 
     _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
     
-    bytes = (unsigned int)_read(fd, png_magic, 8);  /* try to detect PNG header */
-    if(8 != bytes) 
+    bytes = (unsigned int)_read(fd, png_header, 24);  /* try to detect PNG header */
+    if(24 != bytes) 
     {
 	    _close(fd); 
 		return NULL;
     }
     /* check PNG magic number: 89 50 4e 47 0d 0a 1a 0a */
-    p = (unsigned char*)png_magic;
+    p = (unsigned char*)png_header;
     if((0x89 == p[0]) && (0x50 == p[1]) && (0x4e == p[2]) && (0x47 == p[3]) && 
         (0x0d == p[4]) && (0x0a == p[5]) && (0x1a == p[6]) && (0x0a == p[7]))
     {
-        ft = filePNG;
+        if ('I' == p[12] && 'H' == p[13] && 'D' == p[14] && 'R' == p[15])
+        {
+            ft = filePNG;
+            w = p[19] + (p[18] << 8) + (p[17] << 16) + (p[16] << 24);
+            h = p[23] + (p[22] << 8) + (p[21] << 16) + (p[20] << 24);
+        }
     }
-
+#if 0
     if((0xff == p[0]) && (0xd8 == p[1])) /* JPG head magic */
     {
         ft = fileJPG;
     }
+
 
     if((0x42 == p[0]) && (0x4d == p[1])) /* BMP head magic */
     {
@@ -137,10 +120,11 @@ static D2DRenderNode _read_png_file(TCHAR* path)
     {
         ft = fileGIF;
     }
-
+#endif 
 	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
-    if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
+    //if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
+    if (filePNG != ft)
     {
 	    _close(fd); 
 		return NULL;
@@ -170,6 +154,9 @@ static D2DRenderNode _read_png_file(TCHAR* path)
         return NULL;
     }
 
+    _close(fd);
+
+#if 0
     if(fileJPG == ft) /* we still need to check the last two bytes */
     {
         if((0xff != p[size-2]) || (0xd9 != p[size-1]))
@@ -179,26 +166,29 @@ static D2DRenderNode _read_png_file(TCHAR* path)
             return NULL;
         }
     }
-
+#endif
     n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
     if(NULL == n)
     {
         MemoryContextDelete(mcxt);
-        _close(fd); 
         return NULL;
     }
-    
-    _close(fd); 
 
-    n->std.flag = SO_TYPE_IMAGE;
-    n->std.next = NULL;
-    n->std.data	= p;
-    n->std.len  = size;
+    n->std.flag     = SO_TYPE_IMAGE;
+    n->std.next     = NULL;
+    n->std.data	    = p;
+    n->std.length   = size;
+    n->std.width    = w;
+    n->std.height   = h;
 
     hr = _create_device_independance_D2D(n);
-    if(SUCCEEDED(hr)) return n;
+    if (FAILED(hr))
+    {
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
 
-    return NULL;
+    return n;
 }
 
 void render_svg_logo(const char* logoSVG)
@@ -258,24 +248,25 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     HWND hWndUI = tp->hWnd;
     ATLASSERT(::IsWindow(hWndUI));
 
-    n = _read_png_file(tp->pfilePath);
+    n = _read_pic_file(tp->pfilePath);
 
     if(NULL != n) /* it is one PNG or JPG/GIF file */
     {
         d2d.ft = filePNG;
-        m = d2d.pData;
+        m = d2d.pData0;
 
         EnterCriticalSection(&(d2d.cs));
-            d2d.pData = n;
+            d2d.pData0 = n;
         LeaveCriticalSection(&(d2d.cs));
-        
-        ReleaseD2DResource(m);
-
         wp = UI_NOTIFY_FILEOPEN;
         lp = (LPARAM)filePNG;
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
+
+        ReleaseD2DResource(m);
+
         return 0;
     }
+
     /* now check if it is a md or svg file */
     if (0 != _tsopen_s(&fd, tp->pfilePath, _O_RDONLY | _O_TEXT, _SH_DENYWR, 0))
     {
@@ -330,7 +321,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     }
 
     unsigned int charlen, k;
-    while(i < bytes && *q) /* get all UTF-8 characters until we meed a none-UTF8 chararcter*/
+    while(i < bytes && *q) /* get all UTF-8 characters until we meed a none-UTF8 chararcter */
     {
         if (0 == (0x80 & *q))           charlen = 1;  /* 1-byte character */
         else if (0xE0 == (0xF0 & *q))   charlen = 3;  /* 3-byte character */
@@ -350,6 +341,18 @@ handle_markdown:
     if(i > 0) ft = fileMD; /* any legal UTF8 encoding stream is a legal markdown file */
     if (fileMD == ft)
     {
+#if 0
+        q = (unsigned char*)palloc(i + 1);
+        if (NULL == q)
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
+        }
+        memcpy(q, p, i);
+        q[i] = 0;
+#endif
         mcxt = AllocSetContextCreate(TopMemoryContext, "Markdown-Cxt", ALLOCSET_DEFAULT_SIZES);
         if (NULL == mcxt) 
         {
@@ -360,17 +363,11 @@ handle_markdown:
         }
 
         MemoryContextSwitchTo(mcxt);
-
-        q = (unsigned char*)palloc(i+1);
-        if (NULL == q)
-        {
-            MemoryContextDelete(mcxt);
-            wp = UI_NOTIFY_FILEFAIL;
-            lp = 6;
-            goto Quit_open_mspfile_thread;
-        }
-        memcpy(q, p, i);
-        q[i] = 0;
+        
+        uint32_t wlen = sizeof(WCHAR) * (i + 1);
+        WCHAR* w = (WCHAR*)palloc0(wlen);
+        MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)p, i, w, wlen-2);
+        UINT32 len = (UINT32)wcsnlen_s(w, wlen);
 
         free(p); p = NULL;
         _close(fd); isOpened = FALSE;
@@ -378,14 +375,9 @@ handle_markdown:
         n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
         n->std.flag = SO_TYPE_TEXT;
         n->std.next = NULL;
-        n->std.data = q;
-        n->std.len = i;
-
-        WCHAR* w = (WCHAR*)palloc0(sizeof(WCHAR) * i);
-        utf82unicode(q, i, w, 2 * i);
-        UINT32 len = (UINT32)wcsnlen_s(w, 2 * (i - 1));
-
-        hr = d2d.pDWriteFactory->CreateTextLayout(w, len, d2d.pTextFormat, tm.width, 120, &(n->pTextLayout));
+        n->std.data = w;
+        n->std.length = len;
+        hr = d2d.pDWriteFactory->CreateTextLayout(w, len, d2d.pTextFormat, tm.width, 1, &(n->pTextLayout));
         
         if (FAILED(hr))
         {
@@ -411,11 +403,19 @@ handle_markdown:
         tr.startPosition = 22; tr.length = 10;
         n->pTextLayout->SetStrikethrough(TRUE, tr);
 
+        DWRITE_TEXT_METRICS textMetrics;
+        HRESULT hr = n->pTextLayout->GetMetrics(&textMetrics);
+        if (SUCCEEDED(hr))
+        {
+            n->std.width = std::max(textMetrics.layoutWidth, textMetrics.left + textMetrics.width);
+            n->std.height = std::max(textMetrics.layoutHeight, textMetrics.height);
+        }
+
         d2d.ft = fileMD;
-        m = d2d.pData;
+        m = d2d.pData0;
 
         EnterCriticalSection(&(d2d.cs));
-            d2d.pData = n;
+            d2d.pData0 = n;
         LeaveCriticalSection(&(d2d.cs));
 
         wp = UI_NOTIFY_FILEOPEN;
@@ -470,7 +470,7 @@ handle_svg:
             lp = 6;
             goto Quit_open_mspfile_thread;
         }
-        n->std.len  = len;
+        n->std.length  = len;
         n->std.data = (unsigned char* )palloc(len);
         if(NULL == n->std.data)
         {
@@ -493,10 +493,10 @@ handle_svg:
         }
 
         d2d.ft = filePNG;
-        m = d2d.pData;
+        m = d2d.pData0;
 
         EnterCriticalSection(&(d2d.cs));
-            d2d.pData = n;
+            d2d.pData0 = n;
         LeaveCriticalSection(&(d2d.cs));
         wp = UI_NOTIFY_FILEOPEN;
         lp = (LPARAM)fileBMP;

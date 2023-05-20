@@ -176,7 +176,9 @@ public:
 			::MessageBox(NULL, _T("ERROR: Cannot create thread!!!"), _T("msp"), MB_OK);
 			return 0;
 		}
-
+		
+//		DWORD tid = GetThreadId(hThread);
+		
 		m_arrThreadHandles[m_dwCount] = hThread;
 		m_dwCount++;
 		return dwThreadID;
@@ -441,6 +443,7 @@ static void ReleaseD2D(HINSTANCE hInstance)
 {
 	EnterCriticalSection(&(d2d.cs));
 		ReleaseD2DResource(d2d.pData);
+		ReleaseD2DResource(d2d.pData0);
 	LeaveCriticalSection(&(d2d.cs));
 
 	DeleteCriticalSection(&(d2d.cs));

@@ -29,7 +29,7 @@
 extern CAppModule _Module;
 
 #include <atlwin.h>
-
+#include <processthreadsapi.h>
 #include <WinBase.h>
 #include <libloaderapi.h>
 #include <VersionHelpers.h>
