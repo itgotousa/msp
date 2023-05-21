@@ -19,6 +19,121 @@ static HRESULT GetBackgroundColor(IWICMetadataQueryReader*,
     IWICBitmapDecoder*, D2D1_COLOR_F*);
 static BOOL GetAnimationMetaData(D2DRenderNode n);
 
+#define BYTES_PER_PIXEL 4
+#define MAX_IMAGE_BYTES (48 * 1024 * 1024)
+
+static void* bitmap_create(int width, int height)
+{
+    /* ensure a stupidly large bitmap is not created */
+    if (((long long)width * (long long)height) > (MAX_IMAGE_BYTES / BYTES_PER_PIXEL)) {
+        return NULL;
+    }
+    return calloc(width * height, BYTES_PER_PIXEL);
+}
+
+
+static void bitmap_set_opaque(void* bitmap, bool opaque)
+{
+    (void)opaque;  /* unused */
+    (void)bitmap;  /* unused */
+    //assert(bitmap);
+}
+
+static bool bitmap_test_opaque(void* bitmap)
+{
+    (void)bitmap;  /* unused */
+    //assert(bitmap);
+    return false;
+}
+
+static unsigned char* bitmap_get_buffer(void* bitmap)
+{
+    //assert(bitmap);
+    return (unsigned char*)bitmap;
+}
+
+static void bitmap_destroy(void* bitmap)
+{
+    //assert(bitmap);
+    free(bitmap);
+}
+
+static void bitmap_modified(void* bitmap)
+{
+    (void)bitmap;  /* unused */
+    //assert(bitmap);
+    return;
+}
+
+static D2DRenderNode _decode_gif_data(unsigned char* data, unsigned int length, unsigned int w, unsigned int h)
+{
+    D2DRenderNode n = NULL;
+    gif_bitmap_callback_vt bitmap_callbacks = {
+            bitmap_create,
+            bitmap_destroy,
+            bitmap_get_buffer,
+            bitmap_set_opaque,
+            bitmap_test_opaque,
+            bitmap_modified
+    };
+    gif_animation gif;
+    gif_result code;
+
+    /* create our gif animation */
+    gif_create(&gif, &bitmap_callbacks);
+
+    /* begin decoding */
+    do 
+    {
+        code = gif_initialise(&gif, length, data);
+        if (code != GIF_OK && code != GIF_WORKING) 
+        {
+            gif_finalise(&gif);
+            return NULL;
+        }
+    } while (code != GIF_OK);
+
+    code = gif_decode_frame(&gif, 0);
+    if (GIF_OK == code)
+    {
+        unsigned int out_size = gif.height * gif.width * 4;
+        MemoryContext mcxt = AllocSetContextCreate(TopMemoryContext, "Image-GIF-Cxt", 0, MAXALIGN(out_size + 1024), ALLOCSET_IMAGE_MAXSIZE);
+        if (NULL == mcxt)
+        {
+            gif_finalise(&gif);
+            return NULL;
+        }
+        //image = (unsigned char*)gif.frame_image;
+        MemoryContextSwitchTo(mcxt);
+        unsigned char* p = (unsigned char*)palloc(out_size);
+        if(NULL == p)
+        {
+            gif_finalise(&gif);
+            MemoryContextDelete(mcxt);
+            return NULL;
+        }
+        n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+        if (NULL == n)
+        {
+            gif_finalise(&gif);
+            MemoryContextDelete(mcxt);
+            return NULL;
+        }
+        memcpy(p, (unsigned char*)gif.frame_image, out_size);
+        n->std.type = MSP_TYPE_IMAGE;
+        n->std.next = NULL;
+        n->std.data = p;
+        n->std.length = out_size;
+        n->std.width = w;
+        n->std.height = h;
+        n->std.flag |= MSP_HINT_GIF;
+    }
+    /* clean up */
+    gif_finalise(&gif);
+
+    return n;
+}
+
 static D2DRenderNode _decode_png_data(unsigned char* buf, unsigned int length, unsigned int w, unsigned int h)
 {
     D2DRenderNode n = NULL;
@@ -202,7 +317,7 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
         w = p[18] + (p[19] << 8) + (p[20] << 16) + (p[21] << 24);
         h = p[22] + (p[23] << 8) + (p[24] << 16) + (p[25] << 24);
     }
-
+#endif 
     if((0x47 == p[0]) && (0x49 == p[1]) && (0x46 == p[2]) && (0x38 == p[3]) && 
         (0x39 == p[4]) && (0x61 == p[5]))  /* GIF head magic */
     {
@@ -210,8 +325,8 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
         w = p[6] + (p[7] << 8);
         h = p[8] + (p[9] << 8);
     }
-#endif 
-	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
+
+    _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
     if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
     {
@@ -235,6 +350,17 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
     if (filePNG == ft)
     {
         n = _decode_png_data(p, bytes, w, h);
+        if (NULL == n)
+        {
+            free(p);
+            _close(fd);
+            return NULL;
+        }
+    }
+
+    if (fileGIF == ft)
+    {
+        n = _decode_gif_data(p, bytes, w, h);
         if (NULL == n)
         {
             free(p);
