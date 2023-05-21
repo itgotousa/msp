@@ -136,7 +136,7 @@ IDR_MAINFRAME               ICON                    "res\\msp128.ico"
 //
 // Font
 //
-IDR_DEFAULT_FONT    RCDATA      "res\\OPlusSans3-Light.ttf"
+//IDR_DEFAULT_FONT    RCDATA      "res\\OPlusSans3-Light.ttf"
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -651,7 +651,7 @@ public:
 		HRESULT hr = S_OK;
 		ID2D1Bitmap* bmp = NULL;
 
-		if (NULL == n->pConverter) return;
+		//if (NULL == n->pConverter) return;
 
 		POINT pt;
 		GetScrollOffset(pt);
@@ -679,7 +679,16 @@ public:
 		}
 		else
 		{
-			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
+			//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
+			hr = m_pRenderTarget->CreateBitmap(
+				D2D1::SizeU(n->std.width, n->std.height), n->std.data, n->std.width * 4,
+				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
+				&bmp
+			);
+			if (SUCCEEDED(hr))
+			{
+				//hr = bmp->CopyFromMemory(NULL, n->std.data, n->std.width * 4);
+			}
 		}
 
 		if (SUCCEEDED(hr))

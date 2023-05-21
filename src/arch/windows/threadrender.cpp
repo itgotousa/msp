@@ -4,6 +4,7 @@
 #include "resource.h"
 #include "mspwin.h"
 #include "libnsgif.h"
+#include "spng.h"
 #include "lunasvg.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -18,7 +19,72 @@ static HRESULT GetBackgroundColor(IWICMetadataQueryReader*,
     IWICBitmapDecoder*, D2D1_COLOR_F*);
 static BOOL GetAnimationMetaData(D2DRenderNode n);
 
+static D2DRenderNode _decode_png_data(unsigned char* buf, unsigned int length, unsigned int w, unsigned int h)
+{
+    D2DRenderNode n = NULL;
 
+    size_t out_size = 0;
+    unsigned char* p = NULL;
+
+    spng_ctx* ctx = spng_ctx_new(0);
+    if (NULL == ctx) return NULL;
+    
+    if (0 != spng_set_png_buffer(ctx, buf, length))
+    {
+        spng_ctx_free(ctx);
+        return NULL;
+    }
+
+    if(0 != spng_decoded_image_size(ctx, SPNG_FMT_RGBA8, &out_size))
+    {
+        spng_ctx_free(ctx);
+        return NULL;
+    }
+
+    MemoryContext mcxt = AllocSetContextCreate(TopMemoryContext, "Image-PNG-Cxt", 0, MAXALIGN(out_size + 1024), ALLOCSET_IMAGE_MAXSIZE);
+    if (NULL == mcxt)
+    {
+        spng_ctx_free(ctx);
+        return NULL;
+    }
+
+    MemoryContextSwitchTo(mcxt);
+    p = (unsigned char*)palloc(out_size);
+    if (NULL == p)
+    {
+        spng_ctx_free(ctx);
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+
+    if (0 != spng_decode_image(ctx, p, out_size, SPNG_FMT_RGBA8, 0))
+    {
+        spng_ctx_free(ctx);
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+    spng_ctx_free(ctx);
+
+    n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
+    if (NULL == n)
+    {
+        spng_ctx_free(ctx);
+        MemoryContextDelete(mcxt);
+        return NULL;
+    }
+
+    n->std.type = MSP_TYPE_IMAGE;
+    n->std.next = NULL;
+    n->std.data = p;
+    n->std.length = out_size;
+    n->std.width = w;
+    n->std.height = h;
+
+    n->std.flag |= MSP_HINT_PNG;
+    return n;
+}
+
+#if 1
 static HRESULT _create_device_independance_D2D(D2DRenderNode n)
 {
     HRESULT hr = E_FAIL;
@@ -79,13 +145,13 @@ static HRESULT _create_device_independance_D2D(D2DRenderNode n)
     }
     return hr;
 }
+#endif 
 
 #define PIC_HEADER_SIZE     32
 
 static D2DRenderNode _read_pic_file(TCHAR* path)
 {
 	int             fd;
-    MemoryContext   mcxt = NULL;
     D2DRenderNode   n = NULL;
 	unsigned char  *p;
     unsigned char   pic_header[PIC_HEADER_SIZE] = { 0 };
@@ -128,7 +194,6 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
     {
         ft = fileJPG;
     }
-#endif 
 
     if((0x42 == p[0]) && (0x4d == p[1])) /* BMP head magic */
     {
@@ -145,7 +210,7 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
         w = p[6] + (p[7] << 8);
         h = p[8] + (p[9] << 8);
     }
-
+#endif 
 	_lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
     if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
@@ -154,31 +219,33 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
 		return NULL;
     }
 
-    mcxt = AllocSetContextCreate(TopMemoryContext, "ImageCxt", 0, MAXALIGN(size + 1024), ALLOCSET_IMAGE_MAXSIZE);
-    if(NULL == mcxt)
+    p = (unsigned char*)malloc(size);
+    if (NULL == p)
     {
-        _close(fd); 
+        _close(fd);
         return NULL;
     }
-    MemoryContextSwitchTo(mcxt);
-    
-    p = (unsigned char*)palloc(size);
-    if(NULL == p)
-    {
-        MemoryContextDelete(mcxt);
-        _close(fd); 
-        return NULL;
-    }
-
     bytes = (unsigned int)_read(fd, p, size); /* read the entire picture file into the buffer p */
     if (bytes != size) /* read error, since bytes != size */
     {
-        MemoryContextDelete(mcxt);
-        _close(fd); 
+        _close(fd);
         return NULL;
     }
 
+    if (filePNG == ft)
+    {
+        n = _decode_png_data(p, bytes, w, h);
+        if (NULL == n)
+        {
+            free(p);
+            _close(fd);
+            return NULL;
+        }
+    }
+
+    free(p);
     _close(fd);
+    return n;
 
 #if 0
     if(fileJPG == ft) /* we still need to check the last two bytes */
@@ -191,32 +258,6 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
         }
     }
 #endif
-    n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
-    if(NULL == n)
-    {
-        MemoryContextDelete(mcxt);
-        return NULL;
-    }
-
-    n->std.type     = MSP_TYPE_IMAGE;
-    n->std.next     = NULL;
-    n->std.data	    = p;
-    n->std.length   = size;
-    n->std.width    = w;
-    n->std.height   = h;
-
-    if (filePNG == ft) n->std.flag |= MSP_HINT_PNG;
-    if (fileGIF == ft) n->std.flag |= MSP_HINT_GIF;
-    if (fileBMP == ft) n->std.flag |= MSP_HINT_BMP;
-
-    hr = _create_device_independance_D2D(n);
-    if (FAILED(hr))
-    {
-        MemoryContextDelete(mcxt);
-        return NULL;
-    }
-
-    return n;
 }
 
 void render_svg_logo(const char* logoSVG)
