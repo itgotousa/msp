@@ -19,8 +19,6 @@ typedef enum
     fileMD,
     fileSVG,
     filePNG,
-    fileJPG,
-    fileBMP,
     fileGIF
 } fileType;
 
@@ -86,13 +84,16 @@ typedef struct D2DRenderNodeData
 {
     RenderNodeData          std;
     AnimationData           am;
+#if 1
     IWICStream*             pStream;
     IWICBitmapDecoder*      pDecoder;
     IWICBitmapFrameDecode*  pFrame;
     IWICFormatConverter*    pConverter;
     ID2D1PathGeometry*      pGeometry;
     ID2D1StrokeStyle*       pStrokeStyle;
+#endif 
     IDWriteTextLayout*      pTextLayout;
+
 } D2DRenderNodeData;
 
 typedef struct D2DRenderNodeData *D2DRenderNode;

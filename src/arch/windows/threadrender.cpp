@@ -15,9 +15,11 @@ using namespace lunasvg;
 #define ALLOCSET_IMAGE_INITSIZE  (8 * 1024)
 #define ALLOCSET_IMAGE_MAXSIZE   (32 * 1024 * 1024)
 
+#if 0
 static HRESULT GetBackgroundColor(IWICMetadataQueryReader*,
     IWICBitmapDecoder*, D2D1_COLOR_F*);
 static BOOL GetAnimationMetaData(D2DRenderNode n);
+#endif 
 
 #define BYTES_PER_PIXEL 4
 #define MAX_IMAGE_BYTES (48 * 1024 * 1024)
@@ -199,7 +201,7 @@ static D2DRenderNode _decode_png_data(unsigned char* buf, unsigned int length, u
     return n;
 }
 
-#if 1
+#if 0
 static HRESULT _create_device_independance_D2D(D2DRenderNode n)
 {
     HRESULT hr = E_FAIL;
@@ -267,7 +269,6 @@ static HRESULT _create_device_independance_D2D(D2DRenderNode n)
 static D2DRenderNode _read_pic_file(TCHAR* path)
 {
 	int             fd;
-    D2DRenderNode   n = NULL;
 	unsigned char  *p;
     unsigned char   pic_header[PIC_HEADER_SIZE] = { 0 };
 	unsigned int    size, bytes, w = 0, h = 0;
@@ -304,20 +305,7 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
             h = p[23] + (p[22] << 8) + (p[21] << 16) + (p[20] << 24);
         }
     }
-#if 0
-    if((0xff == p[0]) && (0xd8 == p[1])) /* JPG head magic */
-    {
-        ft = fileJPG;
-    }
 
-    if((0x42 == p[0]) && (0x4d == p[1])) /* BMP head magic */
-    {
-        bytes = *((unsigned int*)(p+2));
-        if(size == bytes) ft = fileBMP;
-        w = p[18] + (p[19] << 8) + (p[20] << 16) + (p[21] << 24);
-        h = p[22] + (p[23] << 8) + (p[24] << 16) + (p[25] << 24);
-    }
-#endif 
     if((0x47 == p[0]) && (0x49 == p[1]) && (0x46 == p[2]) && (0x38 == p[3]) && 
         (0x39 == p[4]) && (0x61 == p[5]))  /* GIF head magic */
     {
@@ -328,7 +316,7 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
 
     _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
-    if(filePNG != ft && fileJPG != ft && fileBMP != ft && fileGIF != ft)
+    if(filePNG != ft && fileGIF != ft)
     {
 	    _close(fd); 
 		return NULL;
@@ -346,44 +334,23 @@ static D2DRenderNode _read_pic_file(TCHAR* path)
         _close(fd);
         return NULL;
     }
-
-    if (filePNG == ft)
+    
+    D2DRenderNode n = NULL;
+    switch (ft)
     {
+    case filePNG    :
         n = _decode_png_data(p, bytes, w, h);
-        if (NULL == n)
-        {
-            free(p);
-            _close(fd);
-            return NULL;
-        }
-    }
-
-    if (fileGIF == ft)
-    {
+        break;
+    case fileGIF    :
         n = _decode_gif_data(p, bytes, w, h);
-        if (NULL == n)
-        {
-            free(p);
-            _close(fd);
-            return NULL;
-        }
+        break;
+    default         :
+        break;
     }
 
     free(p);
     _close(fd);
     return n;
-
-#if 0
-    if(fileJPG == ft) /* we still need to check the last two bytes */
-    {
-        if((0xff != p[size-2]) || (0xd9 != p[size-1]))
-        {
-            MemoryContextDelete(mcxt);
-            _close(fd); 
-            return NULL;
-        }
-    }
-#endif
 }
 
 void render_svg_logo(const char* logoSVG)
@@ -411,35 +378,15 @@ void render_svg_logo(const char* logoSVG)
             n->std.next = NULL;
             n->std.width = int(bitmap.width());
             n->std.height = int(bitmap.height());
-
-            int len;
-            unsigned char* png = stbi_write_png_to_mem(bitmap.data(), 0, n->std.width, n->std.height, 4, &len);
-            if (NULL != png)
-            {
-                n->std.flag |= MSP_HINT_PNG;
-                n->std.length = len;
-                n->std.data = (unsigned char*)palloc(len);
-                if (NULL != n->std.data)
-                {
-                    memcpy(n->std.data, png, len);
-                    HRESULT hr = _create_device_independance_D2D(n);
-                    if (SUCCEEDED(hr))
-                    {
-                        d2d.pDataDefault = n;
-                    }
-                    else
-                    {
-                        MemoryContextDelete(mcxt);
-                        d2d.pDataDefault = NULL;
-                    }
-                }
-                free(png);
-            }
-            else
+            n->std.length = (n->std.width * n->std.height) << 2;
+            n->std.data = palloc(n->std.length);
+            if (NULL == n->std.data)
             {
                 MemoryContextDelete(mcxt);
-                d2d.pDataDefault = NULL;
+                return;
             }
+            memcpy(n->std.data, bitmap.data(), n->std.length);
+            d2d.pDataDefault = n;
         }
     }
 }
@@ -677,44 +624,37 @@ handle_svg:
         bitmap.convertToRGBA();
 
         mcxt = AllocSetContextCreate(TopMemoryContext, "SVG2PNG-Cxt", ALLOCSET_DEFAULT_SIZES);
-        if(NULL == mcxt) return NULL;
+        if(NULL == mcxt)
+        {
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
+        }
+
         MemoryContextSwitchTo(mcxt);
+
         n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
-        n->std.type     = MSP_TYPE_IMAGE;
-        n->std.next     = NULL;
-        n->std.width    = int(bitmap.width());
-        n->std.height   = int(bitmap.height());
-
-        int len;
-        unsigned char *png = stbi_write_png_to_mem(bitmap.data(), 0, n->std.width, n->std.height, 4, &len);
-        if(NULL == png)
-        {
-            MemoryContextDelete(mcxt);        
-            wp = UI_NOTIFY_FILEFAIL;
-            lp = 6;
-            goto Quit_open_mspfile_thread;
-        }
-        n->std.length  = len;
-        n->std.data = (unsigned char* )palloc(len);
-        if(NULL == n->std.data)
-        {
-            free(png);
-            MemoryContextDelete(mcxt);        
-            wp = UI_NOTIFY_FILEFAIL;
-            lp = 6;
-            goto Quit_open_mspfile_thread;
-        }
-        memcpy(n->std.data, png, len);
-        free(png);
-
-        HRESULT hr = _create_device_independance_D2D(n);
-        if (FAILED(hr))
+        if(NULL == n)
         {
             MemoryContextDelete(mcxt);
             wp = UI_NOTIFY_FILEFAIL;
             lp = 6;
             goto Quit_open_mspfile_thread;
         }
+        n->std.type     = MSP_TYPE_IMAGE;
+        n->std.next     = NULL;
+        n->std.width    = int(bitmap.width());
+        n->std.height   = int(bitmap.height());
+        n->std.length   = (n->std.width * n->std.height) << 2;
+        n->std.data     = palloc(n->std.length);
+        if (NULL == n->std.data)
+        {
+            MemoryContextDelete(mcxt);
+            wp = UI_NOTIFY_FILEFAIL;
+            lp = 6;
+            goto Quit_open_mspfile_thread;
+        }
+        memcpy(n->std.data, bitmap.data(), n->std.length);
 
         d2d.ft = filePNG;
         m = d2d.pData0;
@@ -723,7 +663,7 @@ handle_svg:
             d2d.pData0 = n;
         LeaveCriticalSection(&(d2d.cs));
         wp = UI_NOTIFY_FILEOPEN;
-        lp = (LPARAM)fileBMP;
+        lp = (LPARAM)filePNG;
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
 
         ReleaseD2DResource(m);
@@ -766,6 +706,7 @@ Quit_open_mspfile_thread:
 // associated with them.  These frames will be used to compose the next frame, but the 
 // difference is that the composed frame will not be displayed unless it's the last frame 
 // in the loop (i.e. we move immediately to composing the next composed frame).
+#if 0
 /******************************************************************
 *                                                                 *
 *  GetBackgroundColor()                                           *
@@ -1001,4 +942,4 @@ static BOOL GetAnimationMetaData(D2DRenderNode n)
     SAFERELEASE(pMetadataQueryReader);
     return TRUE;
 }
-
+#endif 

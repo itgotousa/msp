@@ -212,8 +212,8 @@ public:
 		HRESULT hr = S_OK;
 		ID2D1Bitmap* bmp = NULL;
 
-		if(NULL == n) return;
-		if(NULL == n->pConverter) return;
+		if (NULL == n) return;
+		//if (NULL == n->pConverter) return;
 
 		int x, y, width, height;
 		SIZE sz;
@@ -226,9 +226,15 @@ public:
 		width = n->std.width; height = n->std.height;
 		x = ((rc.right - rc.left - width) >> 1);
 		y = ((rc.bottom - rc.top - height) >> 1);
-		if(x < 0) x = 0; if(y < 0) y = 0;
 
-		hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
+		if (x < 0) x = 0;
+		if (y < 0) y = 0;
+
+		hr = m_pRenderTarget->CreateBitmap(
+			D2D1::SizeU(width, height), n->std.data, width * 4,
+			D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
+			&bmp);
+		//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
 		if(SUCCEEDED(hr))
 		{
 			m_pRenderTarget->BeginDraw();
@@ -682,7 +688,7 @@ public:
 			//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
 			hr = m_pRenderTarget->CreateBitmap(
 				D2D1::SizeU(n->std.width, n->std.height), n->std.data, n->std.width * 4,
-				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
+				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
 				&bmp
 			);
 			if (SUCCEEDED(hr))
@@ -1850,7 +1856,6 @@ public:
 		{
 			if (MSP_HINT_PNG & n->std.flag) ft = filePNG;
 			if (MSP_HINT_GIF & n->std.flag) ft = fileGIF;
-			if (MSP_HINT_BMP & n->std.flag) ft = fileBMP;
 		}
 
 		switch(ft)
@@ -1867,8 +1872,6 @@ public:
 					m_timerStart = TRUE;
 			}
 		case filePNG	:
-		case fileBMP	:
-		case fileJPG	:
 		case fileSVG	:
 			InvalidateRect(NULL);
 			UpdateWindow();
