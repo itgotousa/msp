@@ -4,6 +4,8 @@
 #include "resource.h"
 #include "mspwin.h"
 #include "libnsgif.h"
+#include "unicode.h"
+#include "font.h"
 #include "spng.h"
 #include "lunasvg.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
