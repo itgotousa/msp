@@ -31,7 +31,7 @@ static const U8 utf8d[] = {
     12,36,12,12,12,12,12,12,12,12,12,12
 };
 
-U32 inline decode_utf8(U32* state, U32* codep, U8 byte) 
+static inline U32 decode_utf8(U32* state, U32* codep, U8 byte) 
 {
   U32 type = utf8d[byte];
 
@@ -42,59 +42,37 @@ U32 inline decode_utf8(U32* state, U32* codep, U8 byte)
   return *state;
 }
 
-#if 1
-U32 CodePointCount(U8* s, U32 bytes, U32* count)
+/* utf8 must contain legal UTF8 character. Return the words(16-bit) of UTF16 */
+U32 UTF8toUTF16(U8* utf8, U32 utf8Bytes, U16* utf16)
 {
-    U8* p;
-    U32 codepoint, i, num;
-    U32 state = UTF8_ACCEPT;
+    U32 i, words;
+    U32 state, codepoint;
+    U16* p;
+    
+    if (NULL == utf16) return 0;
 
-    p = s;  num = 0;
-    for (i = 0; i < bytes; i++)
+    p = utf16;
+    words = 0;
+    state = UTF8_ACCEPT;
+
+    for (i = 0; i < utf8Bytes; i++)
     {
-        if (UTF8_ACCEPT == decode_utf8(&state, &codepoint, *p++)) num++;
-    }
-
-    if (NULL != count) *count = num;
-    return (UTF8_ACCEPT != state);
-}
-#endif 
-
-U32 UTF8toUTF16(U8* src, U32 srcBytes, U16* dst, U32 dstWords)
-{
-    U8* src_actual_end = src + srcBytes;
-    U8* s = src;
-    U16* d = dst;
-    U32 codepoint;
-    U32 state = UTF8_ACCEPT;
-    U32 dst_words_free;
-    U8* src_current_end;
-
-    while (s < src_actual_end)
-    {
-        dst_words_free = dstWords - (d - dst);
-        src_current_end = s + dst_words_free - 1;
-        if (src_actual_end < src_current_end) src_current_end = src_actual_end;
-        if (src_current_end <= s) goto TooSmall;
-        while (s < src_current_end)
+        if (UTF8_ACCEPT == decode_utf8(&state, &codepoint, utf8[i]))
         {
-            if (decode_utf8(&state, &codepoint, *s++)) continue;
-            if (codepoint > 0xFFFF)
+            if (codepoint <= 0xFFFF)
             {
-                *d++ = (U16)(0xD7C0 + (codepoint >> 10));
-                *d++ = (U16)(0xDC00 + (codepoint & 0x3FF));
+                *p++ = (U16)codepoint;
+                words++;
             }
-            else { *d++ = (U16)codepoint; }
+            else
+            {
+                *p++ = (U16)(0xD7C0 + (codepoint >> 10));
+                *p++ = (U16)(0xDC00 + (codepoint & 0x3FF));
+                words += 2;
+            }
         }
     }
-
-    if (UTF8_ACCEPT != state)
-    { }
-
-    if (0 == (dstWords - (d - dst))) goto TooSmall;
-    *d++ = 0;
-TooSmall:
-    return 0;
+    return words;
 }
 
 /* 
