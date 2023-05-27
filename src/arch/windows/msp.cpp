@@ -428,7 +428,7 @@ static HRESULT InitFont(HINSTANCE hInstance)
 													{
 														hr = d2d.pDWriteFactory->CreateTextFormat(tm.fontDefault, fc,
 																DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-																16, L"", &(d2d.pDefaultTextFormat));
+																19, L"", &(d2d.pDefaultTextFormat));
 														SAFERELEASE(pFamilyNames);
 													}
 												}
@@ -439,7 +439,7 @@ static HRESULT InitFont(HINSTANCE hInstance)
 											{
 												hr = d2d.pDWriteFactory->CreateTextFormat(MSP_DEFAULT_FONT, NULL,
 														DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-														tm.text_size, L"", &(d2d.pDefaultTextFormat));
+														19, L"", &(d2d.pDefaultTextFormat));
 											}
 											SAFERELEASE(fc);
 										}

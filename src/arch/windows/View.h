@@ -427,12 +427,13 @@ public:
 		rect.bottom = caretY + caretMetrics.height;
 	}
 
-	void DrawMSPText(D2DRenderNode n)
+	void DrawMSPText(D2DRenderNode n, D2D1_RECT_F *pageRect)
 	{
 		HRESULT hr = S_OK;
 
 		// Calculate actual location in render target based on the
 		// current page transform.
+#if 0
 		D2D1::Matrix3x2F pageTransform;
 		GetViewMatrix(reinterpret_cast<DWRITE_MATRIX*>(&pageTransform));
 		RECT rc;
@@ -452,13 +453,13 @@ public:
 		D2D1::Matrix3x2F previousTransform;
 		m_pRenderTarget->GetTransform(&previousTransform);
 		m_pRenderTarget->SetTransform(&pageTransform);
-
+#endif 
 		// Draw the page
 		ID2D1SolidColorBrush* brush = NULL;
 		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(tm.text_bkgcolor), &brush);
 		if (SUCCEEDED(hr))
 		{
-			m_pRenderTarget->FillRectangle(pageRect, brush);
+			m_pRenderTarget->FillRectangle(*pageRect, brush);
 			SAFERELEASE(brush);
 		}
 
@@ -538,7 +539,7 @@ public:
 			POINT pt;
 			GetScrollOffset(pt);
 
-			D2D1_POINT_2F  origin = { pageRect.left - pt.x, pageRect.top - pt.y };
+			D2D1_POINT_2F  origin = { pageRect->left - pt.x, pageRect->top - pt.y };
 			m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
 
 			SAFERELEASE(brush);
@@ -578,7 +579,7 @@ public:
 		}
 
 		// Restore transform
-		m_pRenderTarget->SetTransform(previousTransform);
+		//m_pRenderTarget->SetTransform(previousTransform);
 	}
 
 	void DrawMSPImage(D2DRenderNode n)
@@ -648,11 +649,34 @@ public:
 			return;
 		}
 
+		RECT rc;
+		GetClientRect(&rc);
+		SIZE sz;
+		GetScrollSize(sz);
+		if (sz.cx > rc.right)  rc.right = sz.cx;
+		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
+
+		D2D1::Matrix3x2F pageTransform;
+		GetViewMatrix(reinterpret_cast<DWRITE_MATRIX*>(&pageTransform));
+
+		D2D1_POINT_2F pageSize = GetPageSize();
+		D2D1_RECT_F pageRect = { 0, 0, pageSize.x, pageSize.y };
+		float dx = ((float)rc.right - pageSize.x) / 2;
+		if (dx < 0) dx = 0;
+		pageTransform.dx = dx;
+
 		D2DRenderNode	n = d2d.pData;
 		
 		m_pRenderTarget->BeginDraw();
+		/////////////////////////////////////////////////////////////
 		//m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
 		//m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+
+		// Scale/Rotate canvas as needed
+		D2D1::Matrix3x2F previousTransform;
+		m_pRenderTarget->GetTransform(&previousTransform);
+		m_pRenderTarget->SetTransform(&pageTransform);
+
 		m_pRenderTarget->Clear(D2D1::ColorF(tm.bkg_color));
 		while(NULL != n)
 		{
@@ -662,7 +686,7 @@ public:
 						DrawMSPGraphic(n);
 						break;
 				case MSP_TYPE_TEXT		:	
-						DrawMSPText(n);
+						DrawMSPText(n, &pageRect);
 						break;
 				case MSP_TYPE_IMAGE		:
 						DrawMSPImage(n);
@@ -673,6 +697,9 @@ public:
 			n = (D2DRenderNode)n->std.next;
 		}
 
+		// Restore transform
+		m_pRenderTarget->SetTransform(previousTransform);
+		/////////////////////////////////////////////////////////////
 		hr = m_pRenderTarget->EndDraw();
 		
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)

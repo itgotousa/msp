@@ -5,6 +5,7 @@
 #include "mspwin.h"
 #include "libnsgif.h"
 #include "unicode.h"
+#include "md.h"
 #include "font.h"
 #include "spng.h"
 #include "lunasvg.h"
@@ -324,17 +325,17 @@ void render_svg_logo(const char* logoSVG)
     }
 }
 
+#define SVG_MINIMAL_SIZE     32
 unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 {
-    int   fd;
-    BOOL  isOpened = FALSE;
-    U8 *textbuffer, *p;
-    U32 size, bytes;
-    fileType ft = fileUnKnown;
-    WPARAM wp = 0;
-    LPARAM lp = 0;
+    int         fd;
+    BOOL        isOpened = FALSE;
+    U8          *textbuffer = NULL;
+    U32         size, bytes;
+    fileType    ft = fileUnKnown;
+    WPARAM      wp = 0;
+    LPARAM      lp = 0;
     D2DRenderNode n, m;
-    HRESULT hr = S_OK;
     ThreadParam* tp = (ThreadParam*)lpData;
 
     if(NULL == tp) return 0;
@@ -343,7 +344,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     ATLASSERT(::IsWindow(hWndUI));
 
     n = _read_pic_file(tp->pfilePath);
-
     if(NULL != n) /* it is one PNG or JPG/GIF file */
     {
         m = d2d.pData0;
@@ -359,7 +359,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         return 0;
     }
 
-    /* now check if it is a md or svg file */
+    /* this file is not Picture file, so now check if it is a md or svg file */
     if (0 != _tsopen_s(&fd, tp->pfilePath, _O_RDONLY | _O_TEXT, _SH_DENYWR, 0))
     {
         wp = UI_NOTIFY_FILEFAIL;
@@ -367,7 +367,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
 	    return 0;
     }
-	
     isOpened = TRUE;
 
     size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
@@ -382,29 +381,29 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     textbuffer = (unsigned char*)malloc(size);
     if(NULL == textbuffer)
     {
-        wp = UI_NOTIFY_FILEFAIL;
-        lp = 6;
+        wp = UI_NOTIFY_FILEFAIL; lp = 6;
         goto Quit_open_mspfile_thread;
     }
     /* read the entire file into the buffer */
     bytes = (unsigned int)_read(fd, textbuffer, size);
-
     if (bytes > size) /* bytes should be <= size */
     {
-        wp = UI_NOTIFY_FILEFAIL;
-        lp = 6;
+        wp = UI_NOTIFY_FILEFAIL; lp = 6;
         goto Quit_open_mspfile_thread;
     }
+    _close(fd); isOpened = FALSE;
 
     /* scan the buffer to decide the file type */
-    U32 i = 0; p = textbuffer;
-    while(i < bytes) /* skip the space characters */
+    U32 i = 0; 
+    U8* p = textbuffer;
+
+    while(i < bytes) /* skip the leading space characters */
     {
         if (0x20 != *p && '\t' != *p && '\r' != *p && '\n' != *p) break;
         p++; i++; 
     }
 
-    if(i < bytes - 7)  /* <svg></svg> ||  <?xml ?> */
+    if(i < bytes - SVG_MINIMAL_SIZE)  /* <svg></svg> ||  <?xml ?> */
     {
         if(('<' == *p) && ('s' == *(p+1)) && ('v' == *(p+2)) && ('g' == *(p+3))) 
             ft = fileSVG;
@@ -422,6 +421,10 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     if(utf8bytes > 0) 
     {
         ft = fileMD;
+
+        /* parse the textbuffer to get the parsered tree */
+        md_parse_buffer(textbuffer, utf8bytes);
+        /* generate the render tree from the above parserd tree */
         MemoryContext mcxt = AllocSetContextCreate(TopMemoryContext, "Markdown-Cxt", ALLOCSET_DEFAULT_SIZES);
         if (NULL == mcxt) 
         {
@@ -445,7 +448,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         //UINT32 len = (UINT32)wcsnlen_s(w, wlen);
 
         free(textbuffer); textbuffer = NULL;
-        _close(fd); isOpened = FALSE;
 
         n = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
         if (NULL == n)
@@ -457,7 +459,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         n->std.next = NULL;
         n->std.text = utf16_buffer;
         n->std.text_length = utf16_len;
-        hr = d2d.pDWriteFactory->CreateTextLayout((WCHAR*)utf16_buffer, words, d2d.pDefaultTextFormat, tm.width, 1, &(n->pTextLayout));
+        HRESULT hr = d2d.pDWriteFactory->CreateTextLayout((WCHAR*)utf16_buffer, words, d2d.pDefaultTextFormat, tm.width, 1, &(n->pTextLayout));
         //hr = d2d.pDWriteFactory->CreateTextLayout((WCHAR*)utf16_buffer, words, tm.pblockTextFormat, tm.width, 1, &(n->pTextLayout));
 
         if (FAILED(hr))
@@ -485,7 +487,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         n->pTextLayout->SetStrikethrough(TRUE, tr);
 #endif
         DWRITE_TEXT_METRICS textMetrics;
-        HRESULT hr = n->pTextLayout->GetMetrics(&textMetrics);
+        hr = n->pTextLayout->GetMetrics(&textMetrics);
         if (SUCCEEDED(hr))
         {
             n->std.width = std::max(textMetrics.layoutWidth, textMetrics.left + textMetrics.width);
@@ -520,7 +522,6 @@ handle_svg:
         }
 
         free(p); p = NULL;
-        _close(fd); isOpened = FALSE;
 
         auto bitmap = document->renderToBitmap(width, height, bgColor);
         if(!bitmap.valid())
@@ -579,10 +580,18 @@ handle_svg:
     }
 
 Quit_open_mspfile_thread:
-    if(NULL != textbuffer) { free(textbuffer); textbuffer = NULL; }
-    if(isOpened) { _close(fd); isOpened = FALSE; }
-    PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
 
+    PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp); /* notify the UI thread */
+    if(NULL != textbuffer)
+    { 
+        free(textbuffer); 
+        textbuffer = NULL; 
+    }
+    if(isOpened) 
+    { 
+        _close(fd); 
+        isOpened = FALSE; 
+    }
     return 0;
 }
 
