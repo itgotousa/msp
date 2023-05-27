@@ -18,6 +18,8 @@ typedef signed char		S8, *P_S8, **PP_S8;
 #define MSP_HINT_GIF        0x02
 #define MSP_HINT_BMP        0x04
 
+#define MSP_LOGFILE     ("msp.log")
+
 typedef struct RenderNodeData *RenderNode;
 
 typedef struct RenderNodeData
@@ -25,8 +27,10 @@ typedef struct RenderNodeData
     unsigned int    flag;
     RenderNode      next;
     unsigned char   type;
-    void*           data;
-    unsigned int    length;
+    void*           text;
+    unsigned int    text_length; /* in bytes */
+    void*           image;
+    unsigned int    image_length; /* in bytes */
     unsigned int    width;
     unsigned int    height;
     float           x, y;

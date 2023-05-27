@@ -35,33 +35,43 @@ typedef enum
 #define SAFERELEASE(p)  do { if(NULL != (p)) { (p)->Release(); (p) = NULL; } } while(0)
 
 #define MSP_DEFAULT_FONT    (L"Arial")
-#define MSP_BUILDIN_FONT    (L"OPlusSans 3.0")
+//#define MSP_BUILDIN_FONT    (L"OPlusSans 3.0")
 
+#define MAX_FONT_FAMILY_NAME		 (64)
 typedef struct ThemeData
 {
-    unsigned short  top_margin;
-    unsigned short  bottom_margin;
-    unsigned short  width;
-    unsigned char   width_type; /* pixel or percentage */
-    unsigned char   svgpng_aligment; /* LCR : left, center, right */
-    unsigned int    text_color; /* RGBA */
-    unsigned short  text_size;
-    wchar_t*        text_font;
-    wchar_t*        h1_font;
-    wchar_t*        h2_font;
-    wchar_t*        h3_font;
-    wchar_t*        h4_font;
-    wchar_t*        h5_font;
-    wchar_t*        h6_font;
-    unsigned short  h1_size;
-    unsigned short  h2_size;
-    unsigned short  h3_size;
-    unsigned short  h4_size;
-    unsigned short  h5_size;
-    unsigned short  h6_size;
+    U16     top_margin;
+    U16     bottom_margin;
+    U16     width;
+    U8      width_type; /* pixel/X or percentage/P */
+    U8      svgpng_aligment; /* LCR : left, center, right */
+    U32     text_color; /* RGBA */
+    U16     text_size;
+    TCHAR*  text_font;
+    TCHAR*  h1_font;
+    TCHAR*  h2_font;
+    TCHAR*  h3_font;
+    TCHAR*  h4_font;
+    TCHAR*  h5_font;
+    TCHAR*  h6_font;
+    U16     h1_size;
+    U16     h2_size;
+    U16     h3_size;
+    U16     h4_size;
+    U16     h5_size;
+    U16     h6_size;
+    void*   fontHash; /* HTAB */
+    TCHAR   fontDefault[MAX_FONT_FAMILY_NAME+1];
 } ThemeData;
 
 typedef struct ThemeData* Theme;
+
+#define FONT_INDEX_KEYSIZE		 (MAX_FONT_FAMILY_NAME<<1)
+typedef struct
+{
+    U8      key[FONT_INDEX_KEYSIZE];
+    void*   value;
+} FontEnt;
 
 typedef struct AnimationData
 {
@@ -84,17 +94,9 @@ typedef struct AnimationData *Animation;
 
 typedef struct D2DRenderNodeData
 {
-    RenderNodeData          std;
-    AnimationData           am;
-#if 0
-    IWICStream*             pStream;
-    IWICBitmapDecoder*      pDecoder;
-    IWICBitmapFrameDecode*  pFrame;
-    IWICFormatConverter*    pConverter;
-    ID2D1PathGeometry*      pGeometry;
-    ID2D1StrokeStyle*       pStrokeStyle;
-    IDWriteTextLayout*      pTextLayout;
-#endif 
+    RenderNodeData      std;
+    AnimationData       am;
+    IDWriteTextLayout*  pTextLayout;
 } D2DRenderNodeData;
 
 typedef struct D2DRenderNodeData *D2DRenderNode;
@@ -103,19 +105,16 @@ class FontResources;
 
 typedef struct D2DContextData
 {
+    CRITICAL_SECTION    cs;
+    D2DRenderNode       pData;
+    D2DRenderNode       pData0;
+    D2DRenderNode       pDataDefault;
+
     ID2D1Factory*       pFactory;
     IDWriteFactory5*    pDWriteFactory;
-#if 0
-    IWICImagingFactory*  pIWICFactory;
-    IDWriteTextFormat*   pTextFormat;
+    IDWriteTextFormat*  pDefaultTextFormat;
     IDWriteInMemoryFontFileLoader* fontLoader;
     FontResources* fontResource;
-#endif
-    fileType             ft;
-    CRITICAL_SECTION     cs;
-    D2DRenderNode        pData;
-    D2DRenderNode        pData0;
-    D2DRenderNode        pDataDefault;
 } D2DContextData;
 
 typedef struct

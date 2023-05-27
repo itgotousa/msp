@@ -234,10 +234,10 @@ public:
 		if (y < 0) y = 0;
 
 		hr = m_pRenderTarget->CreateBitmap(
-			D2D1::SizeU(width, height), n->std.data, width * 4,
+			D2D1::SizeU(width, height), n->std.image, width * 4,
 			D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
 			&bmp);
-		//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
+
 		if(SUCCEEDED(hr))
 		{
 			m_pRenderTarget->BeginDraw();
@@ -619,7 +619,7 @@ public:
 		{
 			//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
 			hr = m_pRenderTarget->CreateBitmap(
-				D2D1::SizeU(n->std.width, n->std.height), n->std.data, n->std.width * 4,
+				D2D1::SizeU(n->std.width, n->std.height), n->std.image, n->std.width * 4,
 				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
 				&bmp
 			);

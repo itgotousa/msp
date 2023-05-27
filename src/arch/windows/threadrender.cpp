@@ -120,8 +120,8 @@ static D2DRenderNode _decode_gif_data(unsigned char* data, unsigned int length, 
         memcpy(p, (unsigned char*)gif.frame_image, out_size);
         n->std.type = MSP_TYPE_IMAGE;
         n->std.next = NULL;
-        n->std.data = p;
-        n->std.length = out_size;
+        n->std.image = p;
+        n->std.image_length = out_size;
         n->std.width = w;
         n->std.height = h;
         n->std.flag |= MSP_HINT_GIF;
@@ -188,77 +188,14 @@ static D2DRenderNode _decode_png_data(unsigned char* buf, unsigned int length, u
 
     n->std.type = MSP_TYPE_IMAGE;
     n->std.next = NULL;
-    n->std.data = p;
-    n->std.length = out_size;
+    n->std.image = p;
+    n->std.image_length = out_size;
     n->std.width = w;
     n->std.height = h;
 
     n->std.flag |= MSP_HINT_PNG;
     return n;
 }
-
-#if 0
-static HRESULT _create_device_independance_D2D(D2DRenderNode n)
-{
-    HRESULT hr = E_FAIL;
-
-    if (NULL != n)
-    {
-        hr = d2d.pIWICFactory->CreateStream(&(n->pStream));
-        if (FAILED(hr) || NULL == n->pStream) return hr;
-
-        hr = n->pStream->InitializeFromMemory((WICInProcPointer)(n->std.data), n->std.length);
-        if (FAILED(hr))
-        {
-            SAFERELEASE(n->pStream);
-            return hr;
-        }
-
-        hr = d2d.pIWICFactory->CreateDecoderFromStream(n->pStream, NULL, WICDecodeMetadataCacheOnLoad, &(n->pDecoder));
-        if (FAILED(hr) || NULL == n->pDecoder)
-        {
-            SAFERELEASE(n->pStream);
-            return hr;
-        }
-
-        hr = n->pDecoder->GetFrame(0, &(n->pFrame));
-        if (FAILED(hr) || NULL == n->pFrame)
-        {
-            SAFERELEASE(n->pStream);
-            SAFERELEASE(n->pDecoder);
-            return hr;
-        }
-
-        GetAnimationMetaData(n);
-#if 0
-        n->am = GetAnimationMetaData(n->pDecoder);
-        n->am.frameCount = 1;
-        hr = n->pDecoder->GetFrameCount(&(n->am.frameCount));
-        if (FAILED(hr)) { n->am.frameCount = 1; }
-#endif
-        hr = d2d.pIWICFactory->CreateFormatConverter(&(n->pConverter));
-        if (FAILED(hr) || NULL == n->pConverter)
-        {
-            SAFERELEASE(n->pStream);
-            SAFERELEASE(n->pDecoder);
-            SAFERELEASE(n->pFrame);
-            return hr;
-        }
-        hr = n->pConverter->Initialize(n->pFrame, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone,
-            NULL, 0.0, WICBitmapPaletteTypeMedianCut);
-
-        if (FAILED(hr))
-        {
-            SAFERELEASE(n->pStream);
-            SAFERELEASE(n->pDecoder);
-            SAFERELEASE(n->pFrame);
-            SAFERELEASE(n->pConverter);
-            return hr;
-        }
-    }
-    return hr;
-}
-#endif 
 
 #define PIC_HEADER_SIZE     32
 
@@ -374,24 +311,17 @@ void render_svg_logo(const char* logoSVG)
             n->std.next = NULL;
             n->std.width = int(bitmap.width());
             n->std.height = int(bitmap.height());
-            n->std.length = (n->std.width * n->std.height) << 2;
-            n->std.data = palloc(n->std.length);
-            if (NULL == n->std.data)
+            n->std.image_length = (n->std.width * n->std.height) << 2;
+            n->std.image = palloc(n->std.image_length);
+            if (NULL == n->std.image)
             {
                 MemoryContextDelete(mcxt);
                 return;
             }
-            memcpy(n->std.data, bitmap.data(), n->std.length);
+            memcpy(n->std.image, bitmap.data(), n->std.image_length);
             d2d.pDataDefault = n;
         }
     }
-}
-
-
-static int utf82unicode(unsigned char* input, int length, LPWSTR output, int max)
-{
-    wmemset(output, 0, max);
-    return MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)input, length, output, max);
 }
 
 unsigned WINAPI open_mspfile_thread(LPVOID lpData)
@@ -419,7 +349,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 
     if(NULL != n) /* it is one PNG or JPG/GIF file */
     {
-        d2d.ft = filePNG;
         m = d2d.pData0;
 
         EnterCriticalSection(&(d2d.cs));
@@ -643,18 +572,17 @@ handle_svg:
         n->std.next     = NULL;
         n->std.width    = int(bitmap.width());
         n->std.height   = int(bitmap.height());
-        n->std.length   = (n->std.width * n->std.height) << 2;
-        n->std.data     = palloc(n->std.length);
-        if (NULL == n->std.data)
+        n->std.image_length   = (n->std.width * n->std.height) << 2;
+        n->std.image     = palloc(n->std.image_length);
+        if (NULL == n->std.image)
         {
             MemoryContextDelete(mcxt);
             wp = UI_NOTIFY_FILEFAIL;
             lp = 6;
             goto Quit_open_mspfile_thread;
         }
-        memcpy(n->std.data, bitmap.data(), n->std.length);
+        memcpy(n->std.image, bitmap.data(), n->std.image_length);
 
-        d2d.ft = filePNG;
         m = d2d.pData0;
 
         EnterCriticalSection(&(d2d.cs));
