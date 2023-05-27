@@ -24,17 +24,17 @@ typedef struct RenderNodeData *RenderNode;
 
 typedef struct RenderNodeData
 {
-    unsigned int    flag;
-    RenderNode      next;
-    unsigned char   type;
-    void*           text;
-    unsigned int    text_length; /* in bytes */
-    void*           image;
-    unsigned int    image_length; /* in bytes */
-    unsigned int    width;
-    unsigned int    height;
-    float           x, y;
-    float           a,b,c,d,e,f;
+    U32         flag;
+    RenderNode  next;
+    U8          type;
+    void*       text;
+    U32         text_length; /* in bytes */
+    void*       image;
+    U32         image_length; /* in bytes */
+    U32         width;
+    U32         height;
+    float       x, y;
+    float       a,b,c,d,e,f;
 } RenderNodeData;
 
 #endif /* __MSP_H__ */

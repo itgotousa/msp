@@ -251,45 +251,58 @@ void ReleaseD2DResource(D2DRenderNode n)
 
 static int InitThemeData(Theme t)
 {
-	if (NULL != t)
+	HRESULT hr = S_OK;
+	if (NULL == t) return -1;
+
+	t->width = 800;  /* pixel */
+	t->width_type = 'X';
+	t->top_margin = 10;
+
+	t->bkg_color = 0xFFFFFF;
+	t->text_bkgcolor = 0xFFFFFF;
+	t->text_color = 0x000000;
+
+	t->text_font = L"Arial";
+	t->h1_font = t->text_font;
+	t->h2_font = t->text_font;
+	t->h3_font = t->text_font;
+	t->h4_font = t->text_font;
+	t->h5_font = t->text_font;
+	t->h6_font = t->text_font;
+
+	t->text_size = 16;
+	t->h6_size = 20;
+	t->h5_size = 22;
+	t->h4_size = 26;
+	t->h3_size = 28;
+	t->h2_size = 32;
+	t->h1_size = 36;
+	t->block_size = 13;
+
+	if (NULL == t->fontHash)
 	{
-		t->width = 600;  /* pixel */
-		t->width_type = 'X';
-		t->top_margin = 10;
-		t->text_font = L"Arial";
-		t->h1_font = t->text_font;
-		t->h2_font = t->text_font;
-		t->h3_font = t->text_font;
-		t->h4_font = t->text_font;
-		t->h5_font = t->text_font;
-		t->h6_font = t->text_font;
+		HASHCTL		hash_ctl;
+		hash_ctl.keysize = FONT_INDEX_KEYSIZE;
+		hash_ctl.entrysize = sizeof(FontEnt);
 
-		t->text_size = 16;
-		t->h6_size = 20;
-		t->h5_size = 22;
-		t->h4_size = 26;
-		t->h3_size = 28;
-		t->h2_size = 32;
-		t->h1_size = 36;
-
-		if (NULL == t->fontHash)
-		{
-			HASHCTL		hash_ctl;
-			hash_ctl.keysize = FONT_INDEX_KEYSIZE;
-			hash_ctl.entrysize = sizeof(FontEnt);
-
-			t->fontHash = hash_create("fontHash", 512, &hash_ctl, HASH_ELEM | HASH_BLOBS);
-			if (NULL == t->fontHash) return -1;
-		}
+		t->fontHash = hash_create("fontHash", 512, &hash_ctl, HASH_ELEM | HASH_BLOBS);
+		if (NULL == t->fontHash) return -1;
 	}
 
-	return 0;
+	hr = d2d.pDWriteFactory->CreateTextFormat(L"Courier New", NULL,
+		DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+		t->block_size, L"", &(t->pblockTextFormat));
+
+	if (SUCCEEDED(hr)) return 0;
+
+	return -1;
 }
 
 static HRESULT InitFontHashTable()
 {
 	HRESULT hr = S_OK;
-	TCHAR fontName[MAX_FONT_FAMILY_NAME+1] = { 0 };
+	bool found;
+	unsigned char fontName[FONT_INDEX_KEYSIZE] = { 0 };
 
 	IDWriteFontCollection* pFontCollection = NULL;
 	hr = d2d.pDWriteFactory->GetSystemFontCollection(&pFontCollection);
@@ -335,7 +348,20 @@ static HRESULT InitFontHashTable()
 					// Get the family name.
 					if (SUCCEEDED(hr) && length < MAX_FONT_FAMILY_NAME)
 					{
-						hr = pFamilyNames->GetString(index, fontName, length + 1);
+						ZeroMemory(fontName, FONT_INDEX_KEYSIZE);
+						hr = pFamilyNames->GetString(index, (WCHAR*)fontName, length + 1);
+						if (SUCCEEDED(hr))
+						{
+#if 0
+							for (int i = 0; i < FONT_INDEX_KEYSIZE; i++)
+							{
+								fprintf(stdout, "%02X:", fontName[i]);
+							}
+							fprintf(stdout, "\n");
+
+							hash_search((HTAB*)tm.fontHash, fontName, HASH_ENTER_NULL, &found);
+#endif 
+						}
 					}
 				}
 			}
@@ -402,7 +428,7 @@ static HRESULT InitFont(HINSTANCE hInstance)
 													{
 														hr = d2d.pDWriteFactory->CreateTextFormat(tm.fontDefault, fc,
 																DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-																tm.text_size, L"", &(d2d.pDefaultTextFormat));
+																16, L"", &(d2d.pDefaultTextFormat));
 														SAFERELEASE(pFamilyNames);
 													}
 												}
@@ -452,8 +478,8 @@ static int InitD2D(HINSTANCE hInstance)
 	hr = InitFont(hInstance);
 	if (FAILED(hr)) return -1;
 
-	hr = InitFontHashTable();
-	if (FAILED(hr)) return -1;
+	//hr = InitFontHashTable();
+	//if (FAILED(hr)) return -1;
 
 	return 0;
 }
@@ -490,19 +516,18 @@ static int InitInstance(HINSTANCE hInstance)
 	g_threadCount = 0;
 	g_monitor = FALSE;
 
-	MemoryContextInit();
-	/* redirect the stdout and stderr to the logfile */
 	freopen(MSP_LOGFILE, "a+", stdout);
 	freopen(MSP_LOGFILE, "a+", stderr);
 
-	fprintf(stdout, "This is a test\n");
+	MemoryContextInit();
+	/* redirect the stdout and stderr to the logfile */
+
+	iRet = InitD2D(hInstance);
+	if(iRet < 0) return -1;
 
 	/* initialize the default theme */
 	iRet = InitThemeData(&tm);
 	if (iRet < 0) return -1;
-
-	iRet = InitD2D(hInstance);
-	if(iRet < 0) return -1;
 
 	g_kaSignal[0] = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if(NULL == g_kaSignal[0])

@@ -37,16 +37,20 @@ typedef enum
 #define MSP_DEFAULT_FONT    (L"Arial")
 //#define MSP_BUILDIN_FONT    (L"OPlusSans 3.0")
 
-#define MAX_FONT_FAMILY_NAME		 (64)
+#define MAX_FONT_FAMILY_NAME		(LOCALE_NAME_MAX_LENGTH)
 typedef struct ThemeData
 {
+    /* size */
     U16     top_margin;
     U16     bottom_margin;
     U16     width;
     U8      width_type; /* pixel/X or percentage/P */
     U8      svgpng_aligment; /* LCR : left, center, right */
-    U32     text_color; /* RGBA */
-    U16     text_size;
+    /* color in RGB format */
+    U32     text_color;
+    U32     text_bkgcolor;
+    U32     bkg_color;
+    /* font type */
     TCHAR*  text_font;
     TCHAR*  h1_font;
     TCHAR*  h2_font;
@@ -54,19 +58,26 @@ typedef struct ThemeData
     TCHAR*  h4_font;
     TCHAR*  h5_font;
     TCHAR*  h6_font;
+    TCHAR*  block_font;
+    /* font size */
+    U16     text_size;
     U16     h1_size;
     U16     h2_size;
     U16     h3_size;
     U16     h4_size;
     U16     h5_size;
     U16     h6_size;
+    U16     block_size;
+
     void*   fontHash; /* HTAB */
     TCHAR   fontDefault[MAX_FONT_FAMILY_NAME+1];
+
+    IDWriteTextFormat* pblockTextFormat;
 } ThemeData;
 
 typedef struct ThemeData* Theme;
 
-#define FONT_INDEX_KEYSIZE		 (MAX_FONT_FAMILY_NAME<<1)
+#define FONT_INDEX_KEYSIZE		 ((MAX_FONT_FAMILY_NAME<<1) + 2)
 typedef struct
 {
     U8      key[FONT_INDEX_KEYSIZE];

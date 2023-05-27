@@ -355,11 +355,12 @@ public:
 #endif
 	}
 
-#if 0
+
 	DWRITE_TEXT_RANGE GetSelectionRange(D2DRenderNode n)
 	{
 		// Returns a valid range of the current selection,
 		// regardless of whether the caret or anchor is first.
+#if 0
 		UINT32 caretBegin = m_caretAnchor;
 		UINT32 caretEnd = m_caretPosition + m_caretPositionOffset;
 		if (caretBegin > caretEnd)
@@ -371,6 +372,8 @@ public:
 		caretEnd = std::min(caretEnd, textLength);
 
 		DWRITE_TEXT_RANGE textRange = { caretBegin, caretEnd - caretBegin };
+#endif
+		DWRITE_TEXT_RANGE textRange = { 0, 0 };
 		return textRange;
 	}
 
@@ -380,7 +383,6 @@ public:
 		D2D1_RECT_F zeroRect = { 0 };
 		rect = zeroRect;
 
-		//if (textLayout_ == NULL) return;
 		// Translate text character offset to point x,y.
 		DWRITE_HIT_TEST_METRICS caretMetrics;
 		float caretX, caretY;
@@ -424,15 +426,27 @@ public:
 		rect.top = caretY;
 		rect.bottom = caretY + caretMetrics.height;
 	}
-#endif
+
 	void DrawMSPText(D2DRenderNode n)
 	{
 		HRESULT hr = S_OK;
-#if 0
+
 		// Calculate actual location in render target based on the
 		// current page transform.
 		D2D1::Matrix3x2F pageTransform;
 		GetViewMatrix(reinterpret_cast<DWRITE_MATRIX*>(&pageTransform));
+		RECT rc;
+		GetClientRect(&rc);
+		SIZE sz;
+		GetScrollSize(sz);
+		if (sz.cx > rc.right)  rc.right = sz.cx;
+		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
+
+		D2D1_POINT_2F pageSize = GetPageSize();
+		D2D1_RECT_F pageRect = { 0, 0, pageSize.x, pageSize.y };
+		float dx = ((float)rc.right - pageSize.x) / 2;
+		if (dx < 0) dx = 0;
+		pageTransform.dx = dx;
 
 		// Scale/Rotate canvas as needed
 		D2D1::Matrix3x2F previousTransform;
@@ -440,11 +454,8 @@ public:
 		m_pRenderTarget->SetTransform(&pageTransform);
 
 		// Draw the page
-		D2D1_POINT_2F pageSize = GetPageSize();
-		D2D1_RECT_F pageRect = { 0, 0, pageSize.x, pageSize.y };
-
 		ID2D1SolidColorBrush* brush = NULL;
-		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &brush);
+		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(tm.text_bkgcolor), &brush);
 		if (SUCCEEDED(hr))
 		{
 			m_pRenderTarget->FillRectangle(pageRect, brush);
@@ -516,15 +527,18 @@ public:
 		D2D1_RECT_F caretRect;
 		GetCaretRect(n, caretRect);
 		m_pRenderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
-		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
+		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(tm.text_color), &brush);
 		if (SUCCEEDED(hr))
 		{
-			m_pRenderTarget->FillRectangle(caretRect, brush);
+			//m_pRenderTarget->FillRectangle(caretRect, brush);
 
 			m_pRenderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 
 			// Draw text
-			D2D1_POINT_2F  origin = { pageRect.left, pageRect.top };
+			POINT pt;
+			GetScrollOffset(pt);
+
+			D2D1_POINT_2F  origin = { pageRect.left - pt.x, pageRect.top - pt.y };
 			m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
 
 			SAFERELEASE(brush);
@@ -540,6 +554,7 @@ public:
 			// so you may see slivers between the selection ranges due
 			// to the per-primitive antialiasing of the edges unless
 			// it is disabled (better for performance anyway).
+#if 0
 			target.SetAntialiasing(false);
 
 			for (size_t i = 0; i < actualHitTestCount; ++i)
@@ -559,27 +574,11 @@ public:
 			}
 
 			target.SetAntialiasing(true);
-		}
 #endif
+		}
+
 		// Restore transform
-		//m_pRenderTarget->SetTransform(previousTransform);
-
-#if 0
-		ID2D1SolidColorBrush* brush = NULL;
-
-		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
-
-		if (!SUCCEEDED(hr)) return;
-
-		//		D2D1_RECT_F layoutRect = D2D1::RectF(n->x, n->y, 400, 200);
-		//		target->DrawText((const WCHAR *)n->data, n->len, d2d.pTextFormat, layoutRect, brush);
-
-		D2D1_POINT_2F  origin = { 0 };
-		m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
-
-		brush->Release();
-		brush = NULL;
-#endif 
+		m_pRenderTarget->SetTransform(previousTransform);
 	}
 
 	void DrawMSPImage(D2DRenderNode n)
@@ -652,8 +651,9 @@ public:
 		D2DRenderNode	n = d2d.pData;
 		
 		m_pRenderTarget->BeginDraw();
-		m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-		m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+		//m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+		//m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+		m_pRenderTarget->Clear(D2D1::ColorF(tm.bkg_color));
 		while(NULL != n)
 		{
 			switch(n->std.type)
@@ -1487,13 +1487,16 @@ public:
 		return 0;
 	}
 
-#if 0
 	void GetViewMatrix(OUT DWRITE_MATRIX* matrix) const
 	{
 		// Generates a view matrix from the current origin, angle, and scale.
 		// Need the editor size for centering.
-		RECT rect;
-		GetClientRect(&rect);
+		RECT rc;
+		GetClientRect(&rc);
+		SIZE sz;
+		GetScrollSize(sz);
+		if (sz.cx > rc.right)  rc.right = sz.cx;
+		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
 
 		// Translate the origin to 0,0
 		DWRITE_MATRIX translationMatrix = {
@@ -1524,11 +1527,11 @@ public:
 		};
 
 		// Set the origin in the center of the window
-		float centeringFactor = .5f;
+		float centeringFactor = 0.5f;
 		DWRITE_MATRIX centerMatrix = {
 			1, 0,
 			0, 1,
-			floor(float(rect.right * centeringFactor)), floor(float(rect.bottom * centeringFactor))
+			floor(float(rc.right * centeringFactor)), 1 // floor(float(rc.bottom * centeringFactor))
 		};
 
 		D2D1::Matrix3x2F resultA, resultB;
@@ -1555,9 +1558,8 @@ public:
 	{
 		// Use the layout metrics to determine how large the page is, taking
 		// the maximum of the content size and layout's maximal dimensions.
-		D2DRenderNode	n;
 		D2D1_POINT_2F pageSize = { 0, 0 };
-		n = d2d.pData;
+		D2DRenderNode	n = d2d.pData;
 		if (NULL != n)
 		{
 			pageSize.x = n->std.width;
@@ -1580,7 +1582,7 @@ public:
 
 		return pageSize;
 	}
-#endif 
+
 #if 0
 	void ConstrainViewOrigin()
 	{
@@ -1796,7 +1798,7 @@ public:
 
 		switch(ft)
 		{
-		case fileMD		:
+		case fileMD:
 			//InitMarkDownLayout();
 		case fileGIF	:
 			//ZeroMemory(&m_Am, sizeof(AnimationData));
@@ -1816,7 +1818,6 @@ public:
 			//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 			return 0;
 		}
-
 		return 0;
 	}
 
