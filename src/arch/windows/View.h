@@ -79,7 +79,7 @@ class CView : public CScrollWindowImpl<CView>
 public:
 	DECLARE_WND_CLASS(NULL)
 
-	CView() : m_pRenderTarget(NULL), m_pFrameComposeRT(NULL), m_pSavedFrame(NULL), m_pRawFrame(NULL)
+	CView() : m_pRenderTarget(NULL) //, m_pFrameComposeRT(NULL), m_pSavedFrame(NULL), m_pRawFrame(NULL)
 	{
 		ZeroMemory(&m_Am, sizeof(AnimationData));
 		m_timerStart = FALSE;
@@ -90,9 +90,11 @@ public:
 	~CView()
 	{
 		SAFERELEASE(m_pRenderTarget);
+#if 0
 		SAFERELEASE(m_pFrameComposeRT);
 		SAFERELEASE(m_pSavedFrame);
 		SAFERELEASE(m_pRawFrame);
+#endif
 	}
 
 private:
@@ -186,11 +188,12 @@ private:
 	AnimationData	m_Am;
 
 	ID2D1HwndRenderTarget*		m_pRenderTarget;
+#if 0
 	ID2D1BitmapRenderTarget*	m_pFrameComposeRT;
 	// The temporary bitmap used for disposal 3 method
 	ID2D1Bitmap* m_pSavedFrame;
 	ID2D1Bitmap* m_pRawFrame;
-
+#endif
 	BOOL IsLastFrame() { return (0 == m_Am.frameIndex); }
 
 	BOOL EndOfAnimation()
@@ -277,25 +280,6 @@ public:
 #endif 		
 	}
 
-#if 0
-	HRESULT CreateGraphicsResources()
-	{
-		HRESULT hr = S_OK;
-		if (NULL == m_pRenderTarget)
-		{
-			RECT rc;
-			GetClientRect(&rc);
-
-			D2D1_SIZE_U size = D2D1::SizeU(rc.right, rc.bottom);
-
-			hr = (d2d.pFactory)->CreateHwndRenderTarget(
-				D2D1::RenderTargetProperties(),
-				D2D1::HwndRenderTargetProperties(m_hWnd, size),
-				&m_pRenderTarget);
-		}
-		return hr;
-	}
-#endif 
 	/******************************************************************
 	*                                                                 *
 	*  CreateDeviceResources   			                              *
@@ -345,67 +329,12 @@ public:
 					renderTargetProperties,
 					hwndRenderTragetproperties,
 					&m_pRenderTarget);
-
-				if (SUCCEEDED(hr))
-				{
-					SAFERELEASE(m_pFrameComposeRT);
-					hr = m_pRenderTarget->CreateCompatibleRenderTarget(
-						D2D1::SizeF(
-							static_cast<FLOAT>(RectWidth(rcClient)),
-							static_cast<FLOAT>(RectHeight(rcClient))),
-						&m_pFrameComposeRT);
-				}
 			}
-#if 0
-			else
-			{
-				// We already have a hwnd render target, resize it to the window size
-				D2D1_SIZE_U size;
-				size.width = RectWidth(rcClient);
-				size.height = RectHeight(rcClient);
-				hr = m_pRenderTarget->Resize(size);
-			}
-#endif
 		}
 
 		return hr;
 	}
 
-#if 0		
-	/******************************************************************
-	*                                                                 *
-	*  RecoverDeviceResources 			                              *
-	*                                                                 *
-	*  Discards device-specific resources and recreates them.         *
-	*  Also starts the animation from the beginning.                  *
-	*                                                                 *
-	******************************************************************/
-
-	HRESULT RecoverDeviceResources()
-	{
-		SAFERELEASE(m_pRenderTarget);
-		SAFERELEASE(m_pFrameComposeRT);
-		SAFERELEASE(m_pSavedFrame);
-
-		m_Am.frameIndex = 0;
-		m_Am.frameDisposal = DM_NONE;  // No previous frames. Use disposal none.
-		m_Am.loopNumber = 0;
-
-		HRESULT hr = CreateDeviceResources();
-
-		if (SUCCEEDED(hr))
-		{
-			if (m_Am.frameCount > 0)
-			{
-				// Load the first frame
-				hr = ComposeNextFrame();
-				InvalidateRect(NULL, FALSE);
-			}
-
-		}
-		return hr;
-	}
-#endif
 
 	void DrawMSPGraphic(D2DRenderNode n)
 	{
@@ -426,6 +355,7 @@ public:
 #endif
 	}
 
+#if 0
 	DWRITE_TEXT_RANGE GetSelectionRange(D2DRenderNode n)
 	{
 		// Returns a valid range of the current selection,
@@ -494,11 +424,11 @@ public:
 		rect.top = caretY;
 		rect.bottom = caretY + caretMetrics.height;
 	}
-
+#endif
 	void DrawMSPText(D2DRenderNode n)
 	{
 		HRESULT hr = S_OK;
-
+#if 0
 		// Calculate actual location in render target based on the
 		// current page transform.
 		D2D1::Matrix3x2F pageTransform;
@@ -598,9 +528,9 @@ public:
 			m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
 
 			SAFERELEASE(brush);
+
 		}
 
-#if 0
 		// Draw the selection ranges in front of images.
 		// This shades otherwise opaque images so they are visibly selected,
 		// checking the isText field of the hit-test metrics.
@@ -632,7 +562,7 @@ public:
 		}
 #endif
 		// Restore transform
-		m_pRenderTarget->SetTransform(previousTransform);
+		//m_pRenderTarget->SetTransform(previousTransform);
 
 #if 0
 		ID2D1SolidColorBrush* brush = NULL;
@@ -670,6 +600,7 @@ public:
 
 		if (0 && n->am.frameCount > 1)
 		{
+#if 0
 			// Get the bitmap to draw on the hwnd render target
 			//hr = m_pFrameComposeRT->GetBitmap(&bmp);
 			IWICBitmapFrameDecode* pf;
@@ -682,6 +613,7 @@ public:
 			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(pc, NULL, &bmp);
 			SAFERELEASE(pf);
 			SAFERELEASE(pc);
+#endif
 		}
 		else
 		{
@@ -691,10 +623,6 @@ public:
 				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
 				&bmp
 			);
-			if (SUCCEEDED(hr))
-			{
-				//hr = bmp->CopyFromMemory(NULL, n->std.data, n->std.width * 4);
-			}
 		}
 
 		if (SUCCEEDED(hr))
@@ -803,11 +731,7 @@ public:
 
 	LRESULT OnDestroy(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& bHandled)
 	{
-		if(NULL!= m_pRenderTarget)
-		{
-			m_pRenderTarget->Release();
-			m_pRenderTarget = NULL;
-		}
+		SAFERELEASE(m_pRenderTarget);
 		return 0;
 	}
 
@@ -846,7 +770,7 @@ public:
 		}
 		return 0;
 	}
-
+#if 0
 	void AlignCaretToNearestCluster(BOOL isTrailingHit, BOOL skipZeroWidth)
 	{
 		// Uses hit-testing to align the current caret position to a whole cluster,
@@ -1290,9 +1214,10 @@ public:
 			CloseClipboard();
 		}
 	}
-
+#endif
 	LRESULT OnKeyPress(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
+#if 0
 		UINT32 keyCode = wParam;
 		// Handles caret navigation and special presses that
 		// do not generate characters.
@@ -1343,10 +1268,10 @@ public:
 				SetSelection(SetSelectionModeAll, 0, TRUE, TRUE);
 			break;
 		}
-
+#endif
 		return 0;
 	}
-
+#if 0
 	void MirrorXCoordinate(IN OUT float& x)
 	{
 		// On RTL builds, coordinates may need to be restored to or converted
@@ -1388,9 +1313,10 @@ public:
 
 		return true;
 	}
-
+#endif
 	LRESULT OnMouseRelease(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
+#if 0
 		ReleaseCapture();
 
 		if (NULL == d2d.pData) return 0;
@@ -1408,12 +1334,13 @@ public:
 		{
 			m_currentlyPanning = FALSE;
 		}
-
+#endif
 		return 0;
 	}
 
 	void UpdateScrollInfo()
 	{
+#if 0
 		// Updates scroll bars.
 		// Determine scroll bar's step size in pixels by multiplying client rect by current view.
 		RECT clientRect;
@@ -1457,8 +1384,10 @@ public:
 		scrollInfo.nMin = 0;
 		scrollInfo.nMax = int(pageSize.x) + scrollInfo.nPage;
 		SetScrollInfo(SB_HORZ, &scrollInfo, TRUE);
+#endif
 	}
 
+#if 0
 	void ConstrainViewOrigin()
 	{
 		// Keep the page on-screen by not allowing the origin
@@ -1471,9 +1400,10 @@ public:
 		if (m_originY > pageSize.y) m_originY = pageSize.y;
 		if (m_originY < 0) m_originY = 0;
 	}
-
+#endif
 	LRESULT OnMouseMove(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
+#if 0
 		if (NULL == d2d.pData) return 0;
 		// Selects text or pans.
 		float x = float(GET_X_LPARAM(lParam));
@@ -1503,17 +1433,19 @@ public:
 			UpdateScrollInfo();
 			InvalidateRect(NULL, FALSE); 
 		}
+#endif
 		return 0;
 	}
 
 	LRESULT OnMousePress(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
-		float x, y;
 
 		if (WM_LBUTTONDOWN == uMsg)
 		{
 			::PostMessage(GetTopLevelParent(), WM_NCLBUTTONDOWN, HTCAPTION, lParam);
 		}
+#if 0
+		float x, y;
 		if (NULL == d2d.pData) return 0;
 		if (MSP_TYPE_IMAGE == d2d.pData->std.type) return 0;
 		
@@ -1538,7 +1470,7 @@ public:
 			m_previousMouseY = y;
 			m_currentlyPanning = true;
 		}
-
+#endif
 		return 0;
 	}
 
@@ -1555,6 +1487,7 @@ public:
 		return 0;
 	}
 
+#if 0
 	void GetViewMatrix(OUT DWRITE_MATRIX* matrix) const
 	{
 		// Generates a view matrix from the current origin, angle, and scale.
@@ -1647,7 +1580,7 @@ public:
 
 		return pageSize;
 	}
-
+#endif 
 #if 0
 	void ConstrainViewOrigin()
 	{
@@ -1664,6 +1597,7 @@ public:
 #endif
 	void OnScroll(UINT message, UINT request)
 	{
+#if 0
 		SCROLLINFO scrollInfo = { sizeof(scrollInfo) };
 		scrollInfo.fMask = SIF_ALL;
 
@@ -1720,6 +1654,7 @@ public:
 			ConstrainViewOrigin();
 			InvalidateRect(NULL, FALSE);
 		}
+#endif
 	}
 
 	LRESULT OnVScroll(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
@@ -1762,6 +1697,7 @@ public:
 		return 0;
 	}
 
+#if 0
 	void UpdateCaretFormatting()
 	{
 		UINT32 currentPos = m_caretPosition + m_caretPositionOffset;
@@ -1802,7 +1738,7 @@ public:
 		SafeRelease(&drawingEffect);
 #endif
 	}
-
+#endif
 	void InitMarkDownLayout()
 	{
 #if 0
@@ -1867,9 +1803,9 @@ public:
 			if (n->am.frameCount > 1) // it is animation GIF
 			{
 				m_Am = n->am;
-				ComposeNextFrame();
-				if (0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL))
-					m_timerStart = TRUE;
+				//ComposeNextFrame();
+				//if (0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL))
+				//	m_timerStart = TRUE;
 			}
 		case filePNG	:
 		case fileSVG	:
@@ -1882,503 +1818,6 @@ public:
 		}
 
 		return 0;
-	}
-
-
-	/******************************************************************
-	*                                                                 *
-	*  CalculateDrawRectangle() 		                              *
-	*                                                                 *
-	*  Calculates a specific rectangular area of the hwnd             *
-	*  render target to draw a bitmap containing the current          *
-	*  composed frame.                                                *
-	*                                                                 *
-	******************************************************************/
-#if 0
-	HRESULT CalculateDrawRectangle(D2D1_RECT_F &drawRect)
-	{
-		HRESULT hr = S_OK;
-		RECT rcClient;
-
-		// Top and left of the client rectangle are both 0
-		if (!GetClientRect(&rcClient))
-		{
-			hr = HRESULT_FROM_WIN32(GetLastError());
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Calculate the area to display the image
-			// Center the image if the client rectangle is larger
-			drawRect.left = (static_cast<FLOAT>(rcClient.right) - m_Am.cxImagePixel) / 2.f;
-			drawRect.top = (static_cast<FLOAT>(rcClient.bottom) - m_Am.cyImagePixel) / 2.f;
-			drawRect.right = drawRect.left + m_Am.cxImagePixel;
-			drawRect.bottom = drawRect.top + m_Am.cyImagePixel;
-
-			// If the client area is resized to be smaller than the image size, scale
-			// the image, and preserve the aspect ratio
-			FLOAT aspectRatio = static_cast<FLOAT>(m_Am.cxImagePixel) /
-				static_cast<FLOAT>(m_Am.cyImagePixel);
-
-			if (drawRect.left < 0)
-			{
-				FLOAT newWidth = static_cast<FLOAT>(rcClient.right);
-				FLOAT newHeight = newWidth / aspectRatio;
-				drawRect.left = 0;
-				drawRect.top = (static_cast<FLOAT>(rcClient.bottom) - newHeight) / 2.f;
-				drawRect.right = newWidth;
-				drawRect.bottom = drawRect.top + newHeight;
-			}
-
-			if (drawRect.top < 0)
-			{
-				FLOAT newHeight = static_cast<FLOAT>(rcClient.bottom);
-				FLOAT newWidth = newHeight * aspectRatio;
-				drawRect.left = (static_cast<FLOAT>(rcClient.right) - newWidth) / 2.f;
-				drawRect.top = 0;
-				drawRect.right = drawRect.left + newWidth;
-				drawRect.bottom = newHeight;
-			}
-		}
-
-		return hr;
-	}
-#endif
-	/******************************************************************
-	*                                                                 *
-	*  ClearCurrentFrameArea() 			                              *
-	*                                                                 *
-	*  Clears a rectangular area equal to the area overlaid by the    *
-	*  current raw frame in the bitmap render target with background  *
-	*  color.                                                         *
-	*                                                                 *
-	******************************************************************/
-	HRESULT ClearCurrentFrameArea()
-	{
-		HRESULT hr = S_FALSE;
-
-		m_pFrameComposeRT->BeginDraw();
-
-		// Clip the render target to the size of the raw frame
-		m_pFrameComposeRT->PushAxisAlignedClip(&(m_Am.framePosition),
-												D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-
-		m_pFrameComposeRT->Clear(m_Am.color_bkg);
-		// Remove the clipping
-		m_pFrameComposeRT->PopAxisAlignedClip();
-
-		hr = m_pFrameComposeRT->EndDraw();
-
-		return hr;
-	}
-
-	/******************************************************************
-	*                                                                 *
-	*  DemoApp::RestoreSavedFrame()                                   *
-	*                                                                 *
-	*  Copys the saved frame to the frame in the bitmap render        * 
-	*  target.                                                        *
-	*                                                                 *
-	******************************************************************/
-	HRESULT RestoreSavedFrame()
-	{
-		HRESULT hr = S_OK;
-
-		ID2D1Bitmap *pFrameToCopyTo = NULL;
-
-		hr = m_pSavedFrame ? S_OK : E_FAIL;
-
-		if(SUCCEEDED(hr))
-		{
-			hr = m_pFrameComposeRT->GetBitmap(&pFrameToCopyTo);
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Copy the whole bitmap
-			hr = pFrameToCopyTo->CopyFromBitmap(NULL, m_pSavedFrame, NULL);
-		}
-
-		SAFERELEASE(pFrameToCopyTo);
-
-		return hr;
-	}
-
-	/******************************************************************
-	*                                                                 *
-	*  DisposeCurrentFrame() 		                                  *
-	*                                                                 *
-	*  At the end of each delay, disposes the current frame           *
-	*  based on the disposal method specified.                        *
-	*                                                                 *
-	******************************************************************/
-	HRESULT DisposeCurrentFrame()
-	{
-		HRESULT hr = S_OK;
-
-		switch (m_Am.frameDisposal)
-		{
-		case DM_UNDEFINED:
-		case DM_NONE:
-			// We simply draw on the previous frames. Do nothing here.
-			break;
-		case DM_BACKGROUND:
-			// Dispose background
-			// Clear the area covered by the current raw frame with background color
-			hr = ClearCurrentFrameArea();
-			break;
-		case DM_PREVIOUS:
-			// Dispose previous
-			// We restore the previous composed frame first
-			hr = RestoreSavedFrame();
-			break;
-		default:
-			// Invalid disposal method
-			hr = E_FAIL;
-		}
-		return hr;
-	}
-
-	/******************************************************************
-	*                                                                 *
-	*  GetRawFrame() 		                                          *
-	*                                                                 *
-	*  Decodes the current raw frame, retrieves its timing            *
-	*  information, disposal method, and frame dimension for          *
-	*  rendering.  Raw frame is the frame read directly from the gif  *
-	*  file without composing.                                        *
-	*                                                                 *
-	******************************************************************/
-	HRESULT GetRawFrame(UINT uFrameIndex)
-	{
-		HRESULT hr = E_FAIL;
-		IWICFormatConverter *pConverter = NULL;
-		IWICBitmapFrameDecode *pWicFrame = NULL;
-		IWICMetadataQueryReader *pFrameMetadataQueryReader = NULL;
-		
-		PROPVARIANT propValue;
-		PropVariantInit(&propValue);
-
-		// Retrieve the current frame
-		D2DRenderNode n = d2d.pData;
-		if (NULL == n) return hr;
-		if (NULL == n->pDecoder) return hr;
-
-		hr = n->pDecoder->GetFrame(uFrameIndex, &pWicFrame);
-
-		if (SUCCEEDED(hr))
-		{
-			// Format convert to 32bppPBGRA which D2D expects
-			hr = d2d.pIWICFactory->CreateFormatConverter(&pConverter);
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			hr = pConverter->Initialize(
-				pWicFrame,
-				GUID_WICPixelFormat32bppPBGRA,
-				WICBitmapDitherTypeNone,
-				NULL,
-				0.0,
-				WICBitmapPaletteTypeMedianCut);
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Create a D2DBitmap from IWICBitmapSource
-			SAFERELEASE(m_pRawFrame);
-			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(
-				pConverter,
-				NULL,
-				&m_pRawFrame);
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Get Metadata Query Reader from the frame
-			hr = pWicFrame->GetMetadataQueryReader(&pFrameMetadataQueryReader);
-		}
-
-		// Get the Metadata for the current frame
-		if (SUCCEEDED(hr))
-		{
-			hr = pFrameMetadataQueryReader->GetMetadataByName(L"/imgdesc/Left", &propValue);
-			if (SUCCEEDED(hr))
-			{
-				hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL); 
-				if (SUCCEEDED(hr))
-				{
-					m_Am.framePosition.left = static_cast<FLOAT>(propValue.uiVal);
-				}
-				PropVariantClear(&propValue);
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			hr = pFrameMetadataQueryReader->GetMetadataByName(L"/imgdesc/Top", &propValue);
-			if (SUCCEEDED(hr))
-			{
-				hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL); 
-				if (SUCCEEDED(hr))
-				{
-					m_Am.framePosition.top = static_cast<FLOAT>(propValue.uiVal);
-				}
-				PropVariantClear(&propValue);
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			hr = pFrameMetadataQueryReader->GetMetadataByName(L"/imgdesc/Width", &propValue);
-			if (SUCCEEDED(hr))
-			{
-				hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL); 
-				if (SUCCEEDED(hr))
-				{
-					m_Am.framePosition.right = static_cast<FLOAT>(propValue.uiVal) 
-						+ m_Am.framePosition.left;
-				}
-				PropVariantClear(&propValue);
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			hr = pFrameMetadataQueryReader->GetMetadataByName(L"/imgdesc/Height", &propValue);
-			if (SUCCEEDED(hr))
-			{
-				hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL);
-				if (SUCCEEDED(hr))
-				{
-					m_Am.framePosition.bottom = static_cast<FLOAT>(propValue.uiVal)
-						+ m_Am.framePosition.top;
-				}
-				PropVariantClear(&propValue);
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Get delay from the optional Graphic Control Extension
-			if (SUCCEEDED(pFrameMetadataQueryReader->GetMetadataByName(
-				L"/grctlext/Delay", 
-				&propValue)))
-			{
-				hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL); 
-				if (SUCCEEDED(hr))
-				{
-					// Convert the delay retrieved in 10 ms units to a delay in 1 ms units
-					hr = UIntMult(propValue.uiVal, 10, &m_Am.frameDelay);
-				}
-				PropVariantClear(&propValue);
-			}
-			else
-			{
-				// Failed to get delay from graphic control extension. Possibly a
-				// single frame image (non-animated gif)
-				m_Am.frameDelay = 0;
-			}
-
-			if (SUCCEEDED(hr))
-			{
-				// Insert an artificial delay to ensure rendering for gif with very small
-				// or 0 delay.  This delay number is picked to match with most browsers' 
-				// gif display speed.
-				//
-				// This will defeat the purpose of using zero delay intermediate frames in 
-				// order to preserve compatibility. If this is removed, the zero delay 
-				// intermediate frames will not be visible.
-				if (m_Am.frameDelay < 90)
-				{
-					m_Am.frameDelay = 90;
-				}
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			if (SUCCEEDED(pFrameMetadataQueryReader->GetMetadataByName(
-					L"/grctlext/Disposal", 
-					&propValue)))
-			{
-				hr = (propValue.vt == VT_UI1) ? S_OK : E_FAIL;
-				if (SUCCEEDED(hr))
-				{
-					m_Am.frameDisposal = propValue.bVal;
-				}
-			}
-			else
-			{
-				// Failed to get the disposal method, use default. Possibly a 
-				// non-animated gif.
-				m_Am.frameDisposal = DM_UNDEFINED;
-			}
-		}
-
-		PropVariantClear(&propValue);
-
-		SAFERELEASE(pConverter);
-		SAFERELEASE(pWicFrame);
-		SAFERELEASE(pFrameMetadataQueryReader);
-
-		return hr;
-	}
-
-	/******************************************************************
-	*                                                                 *
-	*  SaveComposedFrame() 			                                  *
-	*                                                                 *
-	*  Saves the current composed frame in the bitmap render target   *
-	*  into a temporary bitmap. Initializes the temporary bitmap if   *
-	*  needed.                                                        *
-	*                                                                 *
-	******************************************************************/
-
-	HRESULT SaveComposedFrame()
-	{
-		HRESULT hr = S_OK;
-
-		ID2D1Bitmap *pFrameToBeSaved = NULL;
-
-		hr = m_pFrameComposeRT->GetBitmap(&pFrameToBeSaved);
-		if (SUCCEEDED(hr))
-		{
-			// Create the temporary bitmap if it hasn't been created yet 
-			if (NULL == m_pSavedFrame)
-			{
-				D2D1_SIZE_U bitmapSize = pFrameToBeSaved->GetPixelSize();
-				D2D1_BITMAP_PROPERTIES bitmapProp;
-				pFrameToBeSaved->GetDpi(&bitmapProp.dpiX, &bitmapProp.dpiY);
-				bitmapProp.pixelFormat = pFrameToBeSaved->GetPixelFormat();
-
-				hr = m_pFrameComposeRT->CreateBitmap(
-					bitmapSize,
-					bitmapProp,
-					&m_pSavedFrame);
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Copy the whole bitmap
-			hr = m_pSavedFrame->CopyFromBitmap(NULL, pFrameToBeSaved, NULL);
-		}
-
-		SAFERELEASE(pFrameToBeSaved);
-
-		return hr;
-	}
-
-	/******************************************************************
-	*                                                                 *
-	*  OverlayNextFrame() 			                                  *
-	*                                                                 *
-	*  Loads and draws the next raw frame into the composed frame     *
-	*  render target. This is called after the current frame is       *
-	*  disposed.                                                      *
-	*                                                                 *
-	******************************************************************/
-
-	HRESULT OverlayNextFrame()
-	{
-		// Get Frame information
-		HRESULT hr = GetRawFrame(m_Am.frameIndex);
-		if (SUCCEEDED(hr))
-		{
-			// For disposal 3 method, we would want to save a copy of the current
-			// composed frame
-			if (DM_PREVIOUS == m_Am.frameDisposal)
-			{
-				hr = SaveComposedFrame();
-			}
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Start producing the next bitmap
-			m_pFrameComposeRT->BeginDraw();
-
-			// If starting a new animation loop
-			if (0 == m_Am.frameIndex)
-			{
-				// Draw background and increase loop count
-				m_pFrameComposeRT->Clear(m_Am.color_bkg);
-				m_Am.loopNumber++;
-			}
-
-			// Produce the next frame
-			m_pFrameComposeRT->DrawBitmap(
-				m_pRawFrame,
-				m_Am.framePosition);
-
-			hr = m_pFrameComposeRT->EndDraw();
-		}
-
-		// To improve performance and avoid decoding/composing this frame in the 
-		// following animation loops, the composed frame can be cached here in system 
-		// or video memory.
-
-		if (SUCCEEDED(hr))
-		{
-			// Increase the frame index by 1
-			m_Am.frameIndex = (++m_Am.frameIndex) % m_Am.frameCount;
-		}
-
-		return hr;
-	}
-
-	/******************************************************************
-	*                                                                 *
-	*  ComposeNextFrame()			                                  *
-	*                                                                 *
-	*  Composes the next frame by first disposing the current frame   *
-	*  and then overlaying the next frame. More than one frame may    *
-	*  be processed in order to produce the next frame to be          *
-	*  displayed due to the use of zero delay intermediate frames.    *
-	*  Also, sets a timer that is equal to the delay of the frame.    *
-	*                                                                 *
-	******************************************************************/
-	HRESULT ComposeNextFrame()
-	{
-		HRESULT hr = S_OK;
-		// Check to see if the render targets are initialized
-		if (m_pRenderTarget && m_pFrameComposeRT)
-		{
-			// First, kill the timer since the delay is no longer valid
-			//KillTimer(ANIMATION_TIMER_ID);
-
-			// Compose one frame
-			hr = DisposeCurrentFrame();
-			if (SUCCEEDED(hr))
-			{
-				hr = OverlayNextFrame();
-			}
-
-			// Keep composing frames until we see a frame with delay greater than
-			// 0 (0 delay frames are the invisible intermediate frames), or until
-			// we have reached the very last frame.
-			while (SUCCEEDED(hr) && (0 == m_Am.frameDelay) && !IsLastFrame())
-			{
-				hr = DisposeCurrentFrame();
-				if (SUCCEEDED(hr))
-				{
-					hr = OverlayNextFrame();
-				}
-			}
-#if 0
-			// If we have more frames to play, set the timer according to the delay.
-			// Set the timer regardless of whether we succeeded in composing a frame
-			// to try our best to continue displaying the animation.
-			if (!EndOfAnimation() && m_Am.frameCount > 1)
-			{
-				// Set the timer according to the delay
-				//SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL);
-			}
-#endif
-		}
-
-		return hr;
 	}
 
 };

@@ -60,38 +60,6 @@ static const char svg_logo[] =
 "<path d=\"M 0,0 C 0,0 46.273,-34.327 83.966,16.245 83.966,16.245 51.953,-22.544 0,0\"\n"
 "style=\"fill:#001e5a;fill-opacity:1;fill-rule:nonzero;stroke:none\" /></g></g></g></svg>\n";
 
-#if 0
-"<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"\n"
-"x=\"0px\" y=\"0px\" viewBox=\"0 0 291.5 280\" style=\"enable-background:new 0 0 291.5 280;\" xml:space=\"preserve\">\n"
-"<g transform=\"translate(0, 0) scale(2 2)\">\n"
-"<path fill=\"#D3D800\" d=\"M47.5,15.6L47.5,15.6c1.6-0.2,4.1-0.9,6.1-3.6c0,0-3.5-1.2-7.4,3.6c0,0,0,0,0.1,0c-0.1,0.1-0.1,0.1-0.2,0.2\n"
-"c0.7-1.4,1.5-3.9,0.1-7.1c0,0-2.7,2.3-0.9,7.9c-5.1,4.7-10,4.3-10.1,4.3l-0.2,0l-0.1,0.9l0.2,0c0,0,0.2,0,0.4,0\n"
-"c1.2,0,4.9-0.3,9-3.4c0.9,0.6,3,1.3,6.5,0c0,0-2.1-1.6-5.2-1C46.4,16.7,46.9,16.2,47.5,15.6\"/>\n"
-"<path fill=\"#003D70\" d=\"M83.8,56.3c1.4,0,2.8-0.2,3.9-0.5c1.2-0.3,2.2-0.8,3-1.4c0.8-0.6,1.4-1.3,1.8-2.2c0.4-0.9,0.6-1.8,0.6-2.9\n"
-"v-0.1c0-1-0.2-1.9-0.6-2.6c-0.4-0.7-1-1.3-1.8-1.8c-0.8-0.5-1.8-1-2.9-1.3c-1.2-0.4-2.4-0.7-3.9-0.9c-0.6-0.1-1.1-0.2-1.5-0.3\n"
-"c-0.4-0.1-0.8-0.2-1-0.4c-0.3-0.2-0.5-0.3-0.7-0.5c-0.1-0.2-0.2-0.5-0.2-0.7v-0.1c0-0.3,0.1-0.8,0.7-1.1\n"
-"c0.4-0.2,0.9-0.3,1.5-0.3 l0.7,0h9.1v-4.8l-9.7,0c-1.5,0-2.8,0.2-3.9,0.5\n"
-"c-1.1,0.4-2.1,0.9-2.8,1.5c-0.7,0.6-1.3,1.4-1.7,2.2c-0.4,0.8-0.6,1.8-0.6,2.7v0.1\n"
-"c0,1.1,0.2,2,0.7,2.7c0.5,0.7,1.1,1.3,1.9,1.8c0.8,0.5,1.8,0.9,2.9,1.2c1.1,0.3,2.3,0.6,3.6,0.9c1.3,0.2,2.1,0.5,2.6,0.7\n"
-"c0.8,0.4,1,0.9,1,1.3V50c0,0.5-0.3,0.9-0.7,1.2c-0.4,0.2-0.9,0.3-1.6,0.3l-0.6,0v0h-9.2v4.8l9.1,0C83.7,56.3,83.7,56.3,83.8,56.3\"/>\n"
-"<path class=\"st1\" fill=\"#003D70\" d=\"M101.6,39.3h2.7c1.2,0,2.1,0.3,2.7,0.8c0.7,0.5,1.1,1.3,1.1,2.3v0.1c0,1-0.4,1.8-1.1,2.4\n"
-"c-0.7,0.5-1.6,0.7-2.7,0.7h-2.6V39.3z M104.7,50c1.5,0,2.9-0.2,4.1-0.5c1.2-0.3,2.3-0.9,3.1-1.5c0.9-0.7,1.5-1.5,2-2.5\n"
-"c0.5-1,0.7-2.2,0.7-3.4v-0.1c0-1.3-0.2-2.4-0.7-3.4c-0.5-1-1.1-1.8-2-2.4c-0.8-0.6-1.9-1.1-3.1-1.4c-1.2-0.3-2.6-0.5-4.1-0.5\n"
-"H95v22h1c3.1,0,5.6-2.5,5.6-5.6l0-0.7l0.8,0H104.7z\"/>\n"
-"<path fill=\"#003D70\" d=\"M72,56.3V41.2c0-3.8-3.1-6.9-6.9-6.9h-0.3l-5.3,8.6l-5.3-8.6h-7.2v15.1c0,3.6,2.8,6.6,6.4,6.9l0.1-12.8l6,9.2\n"
-"l6-9.2v12.8H72z\"/>\n"
-"<path fill=\"#D3D800\" d=\"M21.4,27.2c-12.7-4-17.2-8.7-19.7-16c1.6,11.3,7.8,19.3,20,23.9c6.8,2.6,14.4,6,15.6,14.1\n"
-"c0.6-1.4,1.8-6,0.2-10.2C35.6,33.9,30.2,29.9,21.4,27.2\"/>\n"
-"<path fill=\"#003D70\" d=\"M20.9,36.3c-9.2-3.6-15.5-9.5-18.5-17.4c1,6.4,4.6,19.6,18.5,24.8c7.7,2.9,12.6,6.4,14.5,11.3c1,2.5,1,5,0.7,7\n"
-"C40.4,42.3,27.5,38.9,20.9,36.3\"/>\n"
-"<path fill=\"#D3D800\" d=\"M12.9,78.8c1.3-1.5,5-5,10.3-6l0.4-0.1c3.2-0.7,7.2-2.6,9.2-5.8c1.2-1.7,3.6-5.6,1.5-11\n"
-"c-1-2.5-2.8-4.7-5.3-6.6c1.6,2.6,3.3,7.3,0.2,12.7c-2,3.4-5.1,5-8.1,6.6C17,70.8,13.2,72.9,12.9,78.8\"/>\n"
-"<path fill=\"#003D70\" d=\"M22.2,25.9c7,2.2,13.4,5.3,15.7,10.9c0.8-10.9-8.8-15.6-16.9-18C14.4,16.9,5.9,15,2.3,6.1\n"
-"C2.2,5.9,2.1,5.7,2,5.4c-0.5-1.5-0.9-3-1-4.3C1.6,14.1,7.5,21.3,22.2,25.9\"/>\n"
-"<path fill=\"#003D70\" d=\"M37.1,14.5c-0.5-0.4-1.5-2.1-1.2-2.6c0.3-0.5,1.9,0.3,2.4,0.7c0.5,0.4,0.5,1.9,0.5,1.9S37.5,14.9,37.1,14.5\n"
-"M41.2,15.3c-1.1-5.7-5.3-7-10.8-7c-5.5,0-6.8-6.7-6.8-6.7c0,12,4.8,13.9,12.4,15.9c5.5,1.5,7.7,5.8,7.7,5.8\n"
-"C46.5,19.6,42.5,17.2,41.2,15.3\"/></g></svg>\n";
-#endif
 
 CAppModule _Module;
 
@@ -275,6 +243,7 @@ void ReleaseD2DResource(D2DRenderNode n)
 	MemoryContext mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
     while(NULL != n)
     {
+#if 0
 		SAFERELEASE(n->pConverter);
 		SAFERELEASE(n->pFrame);
 		SAFERELEASE(n->pDecoder);
@@ -282,6 +251,7 @@ void ReleaseD2DResource(D2DRenderNode n)
 		SAFERELEASE(n->pGeometry);
 		SAFERELEASE(n->pStrokeStyle);
 		SAFERELEASE(n->pTextLayout);
+#endif
 //		SAFERELEASE();
 //		SAFERELEASE();
         n = (D2DRenderNode)n->std.next;
@@ -321,13 +291,76 @@ static int InitD2D(HINSTANCE hInstance)
 	
 	InitializeCriticalSection(&(d2d.cs));
 
-	/* Create the factories for D2D, DWrite, and WIC. */
 	// Create D2D factory
 	hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &(d2d.pFactory));
 	if(FAILED(hr)) return -1;
+
 	// Create DWrite factory
 	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&(d2d.pDWriteFactory)));
-	if(FAILED(hr)) return -1;
+	if (FAILED(hr)) return -1;
+
+	IDWriteFontCollection* pFontCollection = NULL;
+	hr = d2d.pDWriteFactory->GetSystemFontCollection(&pFontCollection);
+	if (SUCCEEDED(hr))
+	{
+		IDWriteFontFamily* pFontFamily = NULL;
+		IDWriteLocalizedStrings* pFamilyNames = NULL;
+
+		UINT32 familyCount = pFontCollection->GetFontFamilyCount();
+
+		for (UINT32 i = 0; i < familyCount; ++i)
+		{
+			hr = pFontCollection->GetFontFamily(i, &pFontFamily);
+			if (SUCCEEDED(hr))
+			{
+				hr = pFontFamily->GetFamilyNames(&pFamilyNames);
+				if (SUCCEEDED(hr))
+				{
+					UINT32 index = 0;
+					BOOL exists = false;
+
+					wchar_t localeName[LOCALE_NAME_MAX_LENGTH];
+
+					// Get the default locale for this user.
+					int defaultLocaleSuccess = GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH);
+
+					// If the default locale is returned, find that locale name, otherwise use "en-us".
+					if (defaultLocaleSuccess)
+					{
+						hr = pFamilyNames->FindLocaleName(localeName, &index, &exists);
+					}
+					if (SUCCEEDED(hr) && !exists) // if the above find did not find a match, retry with US English
+					{
+						hr = pFamilyNames->FindLocaleName(L"en-us", &index, &exists);
+					}
+					// If the specified locale doesn't exist, select the first on the list.
+					if (!exists) index = 0;
+
+					UINT32 length = 0;
+
+					// Get the string length.
+					hr = pFamilyNames->GetStringLength(index, &length);
+
+					// Allocate a string big enough to hold the name.
+					wchar_t* name = new (std::nothrow) wchar_t[length + 1];
+					if (name == NULL)
+					{
+						hr = E_OUTOFMEMORY;
+					}
+
+					// Get the family name.
+					if (SUCCEEDED(hr))
+					{
+						hr = pFamilyNames->GetString(index, name, length + 1);
+						delete name;
+					}
+				}
+			}
+		}
+	}
+
+	return 0;
+#if 0
 	// Create WIC factory to load images.
 	hr = CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory, reinterpret_cast<void**>(&(d2d.pIWICFactory)));	
 	if(FAILED(hr)) return -1;
@@ -412,7 +445,6 @@ static int InitD2D(HINSTANCE hInstance)
 		return 0;
 	}
 
-#if 0
 	UINT32 cnt = fc1->GetFontFamilyCount();
 	IDWriteFontFamily* ffm;
 	hr = fc1->GetFontFamily(0, &ffm);
@@ -443,7 +475,7 @@ static int InitD2D(HINSTANCE hInstance)
 	}
 	wchar_t name[256] = { 0 };
 	pFamilyNames->GetString(0, name, 255);
-#endif
+
 
 	hr = d2d.pDWriteFactory->CreateTextFormat(MSP_BUILDIN_FONT, fc,
 			DWRITE_FONT_WEIGHT_NORMAL,
@@ -472,6 +504,7 @@ static int InitD2D(HINSTANCE hInstance)
 	SAFERELEASE(fontFileReference);
 
 	return 0;
+#endif
 }
 
 static void ReleaseD2D(HINSTANCE hInstance)
@@ -482,7 +515,10 @@ static void ReleaseD2D(HINSTANCE hInstance)
 	LeaveCriticalSection(&(d2d.cs));
 
 	DeleteCriticalSection(&(d2d.cs));
-	
+	SAFERELEASE(d2d.pDWriteFactory);
+	SAFERELEASE(d2d.pFactory);
+
+#if 0	
 	if(nullptr != d2d.fontResource)
 	{
 		delete d2d.fontResource;
@@ -495,9 +531,8 @@ static void ReleaseD2D(HINSTANCE hInstance)
 	}
 
 	SAFERELEASE(d2d.pTextFormat);
-	SAFERELEASE(d2d.pDWriteFactory);
 	SAFERELEASE(d2d.pIWICFactory);
-	SAFERELEASE(d2d.pFactory);
+#endif
 }
 
 static int InitInstance(HINSTANCE hInstance)

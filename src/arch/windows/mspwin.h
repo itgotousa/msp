@@ -2,6 +2,8 @@
 #ifndef __MSPWIN_H__
 #define __MSPWIN_H__
 
+#include "msp_common.h"
+
 #define WM_UI_NOTIFY      (WM_USER + 102)
 #define WM_UI_NOTIFYEX    (WM_USER + 103)
 
@@ -84,16 +86,15 @@ typedef struct D2DRenderNodeData
 {
     RenderNodeData          std;
     AnimationData           am;
-#if 1
+#if 0
     IWICStream*             pStream;
     IWICBitmapDecoder*      pDecoder;
     IWICBitmapFrameDecode*  pFrame;
     IWICFormatConverter*    pConverter;
     ID2D1PathGeometry*      pGeometry;
     ID2D1StrokeStyle*       pStrokeStyle;
-#endif 
     IDWriteTextLayout*      pTextLayout;
-
+#endif 
 } D2DRenderNodeData;
 
 typedef struct D2DRenderNodeData *D2DRenderNode;
@@ -102,17 +103,19 @@ class FontResources;
 
 typedef struct D2DContextData
 {
-    ID2D1Factory*        pFactory;
-    IDWriteFactory5*     pDWriteFactory;
+    ID2D1Factory*       pFactory;
+    IDWriteFactory5*    pDWriteFactory;
+#if 0
     IWICImagingFactory*  pIWICFactory;
     IDWriteTextFormat*   pTextFormat;
+    IDWriteInMemoryFontFileLoader* fontLoader;
+    FontResources* fontResource;
+#endif
     fileType             ft;
     CRITICAL_SECTION     cs;
     D2DRenderNode        pData;
     D2DRenderNode        pData0;
     D2DRenderNode        pDataDefault;
-    FontResources*       fontResource;
-    IDWriteInMemoryFontFileLoader* fontLoader;
 } D2DContextData;
 
 typedef struct

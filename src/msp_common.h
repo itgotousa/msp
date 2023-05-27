@@ -1,6 +1,13 @@
 #ifndef __MSP_H__
 #define __MSP_H__
 
+typedef unsigned int	U32, *P_U32, **PP_U32;
+typedef signed int		S32, *P_S32, **PP_S32;
+typedef unsigned short	U16, *P_U16, **PP_U16;
+typedef signed short	S16, *P_S16, **PP_S16;
+typedef unsigned char	U8, *P_U8, **PP_U8;
+typedef signed char		S8, *P_S8, **PP_S8;
+
 /* MSP object type */
 #define MSP_TYPE_INVALID    0
 #define MSP_TYPE_GRAPHIC    1
