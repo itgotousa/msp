@@ -29,11 +29,11 @@ typedef struct RenderNodeData
     U8          type;
     void*       text;
     U32         text_length; /* in bytes */
-    //U32         utf16_length; /* in character */
     void*       image;
     U32         image_length; /* in bytes */
     U32         width;
     U32         height;
+    U32         top;
 #if 0
     float       x, y;
     float       a,b,c,d,e,f;
@@ -42,7 +42,7 @@ typedef struct RenderNodeData
 
 typedef struct RenderRootData
 {
-    U32         type;   /* MSP_TYPE_TEXT or MSP_TYPE_IMAGE */
+    U32         count;   /* how many render nodes in this list? */
     U32         width;
     U32         height;
     RenderNode  node;

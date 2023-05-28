@@ -63,9 +63,10 @@ static void bitmap_modified(void* bitmap)
     return;
 }
 
-static RenderRoot _decode_gif_data(unsigned char* data, unsigned int length, unsigned int w, unsigned int h)
+static RenderRoot DecodeGifData(U8* data, U32 length, U32 w, U32 h)
 {
     RenderRoot root = NULL;
+   
     gif_bitmap_callback_vt bitmap_callbacks = {
             bitmap_create,
             bitmap_destroy,
@@ -103,7 +104,7 @@ static RenderRoot _decode_gif_data(unsigned char* data, unsigned int length, uns
         }
         //image = (unsigned char*)gif.frame_image;
         MemoryContextSwitchTo(mcxt);
-        unsigned char* p = (unsigned char*)palloc(out_size);
+        U8* p = (U8*)palloc(out_size);
         if(NULL == p)
         {
             gif_finalise(&gif);
@@ -134,7 +135,7 @@ static RenderRoot _decode_gif_data(unsigned char* data, unsigned int length, uns
         node->std.height = h;
         node->std.flag |= MSP_HINT_GIF;
 
-        root->type = MSP_TYPE_IMAGE;
+        root->count = 1;
         root->width = w;
         root->height = h;
         root->node = (RenderNode)node;
@@ -145,12 +146,11 @@ static RenderRoot _decode_gif_data(unsigned char* data, unsigned int length, uns
     return root;
 }
 
-static RenderRoot _decode_png_data(unsigned char* buf, unsigned int length, unsigned int w, unsigned int h)
+static RenderRoot DecodePngData(U8* buf, U32 length, U32 w, U32 h)
 {
     RenderRoot root = NULL;
 
     size_t out_size = 0;
-    U8* p = NULL;
 
     spng_ctx* ctx = spng_ctx_new(0);
     if (NULL == ctx) return NULL;
@@ -174,7 +174,7 @@ static RenderRoot _decode_png_data(unsigned char* buf, unsigned int length, unsi
     }
     MemoryContextSwitchTo(mcxt);
 
-    p = (U8*)palloc(out_size);
+    U8* p = (U8*)palloc(out_size);
     if (NULL == p)
     {
         spng_ctx_free(ctx);
@@ -211,7 +211,7 @@ static RenderRoot _decode_png_data(unsigned char* buf, unsigned int length, unsi
     node->std.height = h;
     node->std.flag |= MSP_HINT_PNG;
 
-    root->type = MSP_TYPE_IMAGE;
+    root->count = 1;
     root->width = w;
     root->height = h;
     root->node = (RenderNode)node;
@@ -221,10 +221,9 @@ static RenderRoot _decode_png_data(unsigned char* buf, unsigned int length, unsi
 
 #define PIC_HEADER_SIZE     32
 
-static RenderRoot _read_pic_file(TCHAR* path)
+static RenderRoot ReadPicFile(wchar_t* path)
 {
 	int     fd;
-	U8*     p;
     U8      pic_header[PIC_HEADER_SIZE] = { 0 };
 	U32     size, bytes, w = 0, h = 0;
     fileType ft = fileUnKnown;
@@ -248,7 +247,7 @@ static RenderRoot _read_pic_file(TCHAR* path)
 		return NULL;
     }
     /* check PNG magic number: 89 50 4e 47 0d 0a 1a 0a */
-    p = (U8*)pic_header;
+    U8* p = (U8*)pic_header;
     if((0x89 == p[0]) && (0x50 == p[1]) && (0x4e == p[2]) && (0x47 == p[3]) && 
         (0x0d == p[4]) && (0x0a == p[5]) && (0x1a == p[6]) && (0x0a == p[7]))
     {
@@ -295,10 +294,10 @@ static RenderRoot _read_pic_file(TCHAR* path)
     switch (ft)
     {
     case filePNG    :
-        root = _decode_png_data(p, bytes, w, h);
+        root = DecodePngData(p, bytes, w, h);
         break;
     case fileGIF    :
-        root = _decode_gif_data(p, bytes, w, h);
+        root = DecodeGifData(p, bytes, w, h);
         break;
     default         :
         break;
@@ -354,7 +353,7 @@ void render_svg_logo(const char* logoSVG)
             }
             memcpy(node->std.image, bitmap.data(), node->std.image_length);
 
-            root->type = MSP_TYPE_IMAGE;
+            root->count = 1;
             root->width = node->std.width;
             root->height = node->std.height;
             root->node = (RenderNode)node;
@@ -369,8 +368,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
 {
     int         fd;
     BOOL        isOpened = FALSE;
-    U8          *textbuffer = NULL;
-    U32         size, bytes;
     fileType    ft = fileUnKnown;
     WPARAM      wp = 0;
     LPARAM      lp = 0;
@@ -382,14 +379,15 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     HWND hWndUI = tp->hWnd;
     ATLASSERT(::IsWindow(hWndUI));
 
-    root = _read_pic_file(tp->pfilePath);
+    root = ReadPicFile(tp->pfilePath);
+    RenderRoot old;
     if(NULL != root) /* it is one PNG or JPG/GIF file */
     {
-        RenderRoot old = d2d.pData0;
-
         EnterCriticalSection(&(d2d.cs));
+            old = d2d.pData0;
             d2d.pData0 = root;
         LeaveCriticalSection(&(d2d.cs));
+        
         wp = UI_NOTIFY_FILEOPEN;
         lp = (LPARAM)filePNG;
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
@@ -401,30 +399,28 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
     /* this file is not picture file, so now check if it is a md or svg file */
     if (0 != _tsopen_s(&fd, tp->pfilePath, _O_RDONLY | _O_TEXT, _SH_DENYWR, 0))
     {
-        wp = UI_NOTIFY_FILEFAIL;
-        lp = 1;
+        wp = UI_NOTIFY_FILEFAIL; lp = 1;
         PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
 	    return 0;
     }
     isOpened = TRUE;
 
-    size = (unsigned int)_lseek(fd, 0, SEEK_END); /* get the file size */
+    U32 size = (U32)_lseek(fd, 0, SEEK_END); /* get the file size */
     if (size > MAX_BUF_LEN || 0 == size) /* even it is one byte, it is still a valid md file */
     {
-        wp = UI_NOTIFY_FILEFAIL;
-        lp = 2;
-        goto Quit_open_mspfile_thread;
+        wp = UI_NOTIFY_FILEFAIL; lp = 1;
+        PostMessage(hWndUI, WM_UI_NOTIFY, wp, lp);
     }
     _lseek(fd, 0, SEEK_SET); /* go to the begin of the file */
 
-    textbuffer = (unsigned char*)malloc(size);
+    U8* textbuffer = (U8*)malloc(size);
     if(NULL == textbuffer)
     {
         wp = UI_NOTIFY_FILEFAIL; lp = 6;
         goto Quit_open_mspfile_thread;
     }
     /* read the entire file into the buffer */
-    bytes = (unsigned int)_read(fd, textbuffer, size);
+    U32 bytes = (U32)_read(fd, textbuffer, size);
     if (bytes > size) /* bytes should be <= size */
     {
         wp = UI_NOTIFY_FILEFAIL; lp = 6;
@@ -484,6 +480,7 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         //MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)p, i, w, wlen-2);
         //UINT32 len = (UINT32)wcsnlen_s(w, wlen);
         free(textbuffer); textbuffer = NULL;
+
         root = (RenderRoot)palloc0(sizeof(RenderRootData));
         if (NULL == root)
         {
@@ -503,7 +500,6 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         node->std.text = utf16_buffer;
         node->std.text_length = utf16_len;
         HRESULT hr = d2d.pDWriteFactory->CreateTextLayout((WCHAR*)utf16_buffer, (utf16_len>>1), d2d.pDefaultTextFormat, tm.width, 1, &(node->pTextLayout));
-        //hr = d2d.pDWriteFactory->CreateTextLayout((WCHAR*)utf16_buffer, (utf16_len>>1), tm.pblockTextFormat, tm.width, 1, &(n->pTextLayout));
         if (FAILED(hr))
         {
             MemoryContextDelete(mcxt);
@@ -531,16 +527,16 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
         hr = node->pTextLayout->GetMetrics(&textMetrics);
         if (SUCCEEDED(hr))
         {
-            node->std.width = std::max(textMetrics.layoutWidth, textMetrics.left + textMetrics.width);
+            node->std.width = tm.width; // std::max(textMetrics.layoutWidth, textMetrics.left + textMetrics.width);
             node->std.height = std::max(textMetrics.layoutHeight, textMetrics.height);
         }
-        root->type = MSP_TYPE_TEXT;
+        root->count = 1;
         root->node = (RenderNode)node;
-
+#if 0
         if (NULL != d2d.pDataDefault)
         {
             node->std.next = d2d.pDataDefault->node;
-#if 1
+
             if (NULL != d2d.pDataDefault->node)
             {
                 D2DRenderNode m = (D2DRenderNode)palloc0(sizeof(D2DRenderNodeData));
@@ -564,20 +560,21 @@ unsigned WINAPI open_mspfile_thread(LPVOID lpData)
                     }
                 }
             }
-#endif
         }
-        //root->node = d2d.pDataDefault->node;
+#endif
         RenderNode n = root->node;
         root->width = 0; root->height = 0;
         while (NULL != n)
         {
+            n->top = tm.top_margin + root->height;
             if (n->width > root->width) root->width = n->width;
             root->height += n->height;
             n = n->next;
         }
 
-        RenderRoot old = d2d.pData0;
+        RenderRoot old;
         EnterCriticalSection(&(d2d.cs));
+            old = d2d.pData0;
             d2d.pData0 = root;
         LeaveCriticalSection(&(d2d.cs));
 
@@ -647,14 +644,14 @@ handle_svg:
         }
         memcpy(node->std.image, bitmap.data(), node->std.image_length);
 
-        root->type = MSP_TYPE_IMAGE;
+        root->count = 1;
         root->width = node->std.width;
         root->height = node->std.height;
         root->node = (RenderNode)node;
 
-        RenderRoot old = d2d.pData0;
-
+        RenderRoot old;
         EnterCriticalSection(&(d2d.cs));
+            old = d2d.pData0;
             d2d.pData0 = root;
         LeaveCriticalSection(&(d2d.cs));
 

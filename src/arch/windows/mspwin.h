@@ -131,8 +131,8 @@ typedef struct D2DContextData
 
 typedef struct
 {
-    HWND    hWnd;
-    TCHAR*  pfilePath;
+    HWND        hWnd;
+    wchar_t*    pfilePath;
 } ThreadParam;
 
 extern ThreadParam  tp;

@@ -255,6 +255,7 @@ static int InitThemeData(Theme t)
 	HRESULT hr = S_OK;
 	if (NULL == t) return -1;
 
+	t->top_margin = 10;
 	t->width = 800;  /* pixel */
 	t->width_type = 'X';
 	t->top_margin = 10;
@@ -432,7 +433,7 @@ static HRESULT InitFont(HINSTANCE hInstance)
 													{
 														hr = d2d.pDWriteFactory->CreateTextFormat(tm.fontDefault, fc,
 																DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-																19, L"", &(d2d.pDefaultTextFormat));
+																15, L"", &(d2d.pDefaultTextFormat));
 														SAFERELEASE(pFamilyNames);
 													}
 												}
@@ -443,7 +444,7 @@ static HRESULT InitFont(HINSTANCE hInstance)
 											{
 												hr = d2d.pDWriteFactory->CreateTextFormat(MSP_DEFAULT_FONT, NULL,
 														DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
-														19, L"", &(d2d.pDefaultTextFormat));
+														15, L"", &(d2d.pDefaultTextFormat));
 											}
 											SAFERELEASE(fc);
 										}

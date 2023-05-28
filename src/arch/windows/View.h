@@ -330,26 +330,26 @@ public:
 	}
 
 
-	void DrawMSPGraphic(D2DRenderNode n, U32 heigth)
+	void DrawMSPGraphic(D2DRenderNode n)
 	{
 #if 0
+		POINT pt; GetScrollOffset(pt);
 		m_pRenderTarget->DrawGeometry(n->pGeometry, brush, 1, n->pStrokeStyle);
 #endif
 	}
 
-	void DrawMSPImage(D2DRenderNode n, U32 height)
+	void DrawMSPImage(D2DRenderNode n)
 	{
 		HRESULT hr = S_OK;
 		ID2D1Bitmap* bmp = NULL;
 
-		POINT pt;
-		GetScrollOffset(pt);
+		POINT pt; GetScrollOffset(pt);
 
 		D2D1_RECT_F srcRect = D2D1::RectF(
 			static_cast<float>(-pt.x),
-			static_cast<float>(-pt.y + height) ,
+			static_cast<float>(-pt.y + n->std.top) ,
 			static_cast<float>(n->std.width - pt.x),
-			static_cast<float>(n->std.height - pt.y + height));
+			static_cast<float>(n->std.height + n->std.top - pt.y));
 
 		if (0 && n->am.frameCount > 1)
 		{
@@ -458,12 +458,11 @@ public:
 		rect.bottom = caretY + caretMetrics.height;
 	}
 
-	void DrawMSPText(D2DRenderNode n, U32 height, D2D1_RECT_F *pageRect)
+	void DrawMSPText(D2DRenderNode n)
 	{
 		HRESULT hr = S_OK;
 
-		POINT pt;
-		GetScrollOffset(pt);
+		POINT pt; GetScrollOffset(pt);
 
 		// Calculate actual location in render target based on the
 		// current page transform.
@@ -547,9 +546,9 @@ public:
 					const DWRITE_HIT_TEST_METRICS& htm = hitTestMetrics[i];
 					D2D1_RECT_F highlightRect = {
 						htm.left - pt.x,
-						htm.top - pt.y + height,
+						htm.top - pt.y + n->std.top,
 						(htm.left + htm.width) - pt.x,
-						(htm.top + htm.height) - pt.y + height
+						(htm.top + htm.height) + n->std.top - pt.y
 					};
 
 					m_pRenderTarget->FillRectangle(highlightRect, brush);
@@ -567,12 +566,12 @@ public:
 		if (SUCCEEDED(hr))
 		{
 			caretRect.left -= pt.x;  caretRect.right -= pt.x;
-			caretRect.top -= pt.y + height;   caretRect.bottom -= pt.y + height;
+			caretRect.top += (n->std.top - pt.y);   caretRect.bottom += (n->std.top - pt.y);
 			m_pRenderTarget->FillRectangle(caretRect, brush);
 			m_pRenderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 
 			// Draw text
-			D2D1_POINT_2F  origin = { pageRect->left - pt.x, pageRect->top - pt.y + height };
+			D2D1_POINT_2F  origin = { -pt.x, n->std.top - pt.y};
 			m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
 
 			SAFERELEASE(brush);
@@ -621,23 +620,11 @@ public:
 		// Only render when the window is not occluded
 		if ((m_pRenderTarget->CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED)) return;
 
-		if(NULL == d2d.pData)
-		{
-			DrawDefault();
-			return;
-		}
+		RenderRoot root = d2d.pData;
+		if(NULL == root || NULL == root->node) { DrawDefault(); return; }
 
-		D2DRenderNode node = (D2DRenderNode)d2d.pData->node;
-		if (NULL == node)
-		{
-			DrawDefault();
-			return;
-		}
-
-		RECT rc;
-		GetClientRect(&rc);
-		SIZE sz;
-		GetScrollSize(sz);
+		RECT rc;  GetClientRect(&rc);
+		SIZE sz;  GetScrollSize(sz);
 		if (sz.cx > rc.right)  rc.right = sz.cx;
 		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
 
@@ -645,7 +632,7 @@ public:
 		GetViewMatrix(reinterpret_cast<DWRITE_MATRIX*>(&pageTransform));
 
 		D2D1_POINT_2F pageSize = GetPageSize();
-		fprintf(stdout, "GetPageSize x=%f | y=%f\n", pageSize.x, pageSize.y);
+		//fprintf(stdout, "GetPageSize x=%f | y=%f\n", pageSize.x, pageSize.y);
 		D2D1_RECT_F pageRect = { 0, 0, pageSize.x, pageSize.y };
 		float dx = ((float)rc.right - pageSize.x) / 2;
 		if (dx < 0) dx = 0;
@@ -659,36 +646,40 @@ public:
 		// Scale/Rotate canvas as needed
 		D2D1::Matrix3x2F previousTransform;
 		m_pRenderTarget->GetTransform(&previousTransform);
-		m_pRenderTarget->SetTransform(&pageTransform);
+		if (MSP_TYPE_TEXT == root->node->type || root->count > 1)
+		{
+			m_pRenderTarget->SetTransform(&pageTransform);
+		}
 
 		m_pRenderTarget->Clear(D2D1::ColorF(tm.bkg_color));
 		
-		U32 hoff = 0;
+		D2DRenderNode node = (D2DRenderNode)(root->node);
 		while(NULL != node)
 		{
 			switch(node->std.type)
 			{
 				case MSP_TYPE_TEXT		:	
-						DrawMSPText(node, hoff, &pageRect);
+						DrawMSPText(node);
 						break;
 				case MSP_TYPE_IMAGE		:
-						DrawMSPImage(node, hoff);
+						DrawMSPImage(node);
 						break;
 				case MSP_TYPE_GRAPHIC:
-						//DrawMSPGraphic(node, height);
+						DrawMSPGraphic(node);
 						break;
 				default					:
 						break;
 			}
-			hoff += (node->std.height);
 			node = (D2DRenderNode)node->std.next;
 		}
 
 		// Restore transform
-		m_pRenderTarget->SetTransform(previousTransform);
+		if (MSP_TYPE_TEXT == root->node->type || root->count > 1)
+		{
+			m_pRenderTarget->SetTransform(previousTransform);
+		}
 		/////////////////////////////////////////////////////////////
 		hr = m_pRenderTarget->EndDraw();
-		
 		if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET)
 		{
 			SAFERELEASE(m_pRenderTarget);
@@ -1773,17 +1764,9 @@ public:
 
 		SetScrollSize(d2d.pData->width, d2d.pData->height);
 
-		switch(d2d.pData->type)
-		{
-		case MSP_TYPE_TEXT	:
-		case MSP_TYPE_IMAGE	:
-			InvalidateRect(NULL);
-			UpdateWindow();
-			//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
-			break;
-		default:
-			break;
-		}
+		InvalidateRect(NULL);
+		UpdateWindow();
+		//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
 		return 0;
 	}
 
