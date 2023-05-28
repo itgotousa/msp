@@ -10,9 +10,9 @@ typedef signed char		S8, *P_S8, **PP_S8;
 
 /* MSP object type */
 #define MSP_TYPE_INVALID    0
-#define MSP_TYPE_GRAPHIC    1
-#define MSP_TYPE_TEXT       2
-#define MSP_TYPE_IMAGE      3
+#define MSP_TYPE_TEXT       1
+#define MSP_TYPE_IMAGE      2
+#define MSP_TYPE_GRAPHIC    3
 
 #define MSP_HINT_PNG        0x01
 #define MSP_HINT_GIF        0x02
@@ -29,12 +29,25 @@ typedef struct RenderNodeData
     U8          type;
     void*       text;
     U32         text_length; /* in bytes */
+    //U32         utf16_length; /* in character */
     void*       image;
     U32         image_length; /* in bytes */
     U32         width;
     U32         height;
+#if 0
     float       x, y;
     float       a,b,c,d,e,f;
+#endif
 } RenderNodeData;
+
+typedef struct RenderRootData
+{
+    U32         type;   /* MSP_TYPE_TEXT or MSP_TYPE_IMAGE */
+    U32         width;
+    U32         height;
+    RenderNode  node;
+} RenderRootData;
+
+typedef struct RenderRootData* RenderRoot;
 
 #endif /* __MSP_H__ */

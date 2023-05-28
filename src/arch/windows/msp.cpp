@@ -236,11 +236,12 @@ public:
 };
 
 /* release all D2D device independent resource and the whole memory pool */
-void ReleaseD2DResource(D2DRenderNode n)
+void ReleaseD2DResource(RenderRoot root)
 {
-	if(NULL == n) return;
+	if(NULL == root) return;
 
-	MemoryContext mcxt = *(MemoryContext *) (((char *) n) - sizeof(void *)); 
+	MemoryContext mcxt = *(MemoryContext *) (((char *) root) - sizeof(void *)); 
+	D2DRenderNode n = (D2DRenderNode)(root->node);
     while(NULL != n)
     {
 		SAFERELEASE(n->pTextLayout);
@@ -259,8 +260,11 @@ static int InitThemeData(Theme t)
 	t->top_margin = 10;
 
 	t->bkg_color = 0xFFFFFF;
+	//t->bkg_color = 0xDAE8FC;
 	t->text_bkgcolor = 0xFFFFFF;
+	//t->text_bkgcolor = 0xDAE8FC;
 	t->text_color = 0x000000;
+	t->text_selectcolor = 0x87CEFA;
 
 	t->text_font = L"Arial";
 	t->h1_font = t->text_font;
@@ -277,7 +281,7 @@ static int InitThemeData(Theme t)
 	t->h3_size = 28;
 	t->h2_size = 32;
 	t->h1_size = 36;
-	t->block_size = 13;
+	t->block_size = 15;
 
 	if (NULL == t->fontHash)
 	{

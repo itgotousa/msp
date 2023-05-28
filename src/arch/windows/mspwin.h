@@ -50,6 +50,7 @@ typedef struct ThemeData
     U32     text_color;
     U32     text_bkgcolor;
     U32     bkg_color;
+    U32     text_selectcolor;
     /* font type */
     TCHAR*  text_font;
     TCHAR*  h1_font;
@@ -110,16 +111,16 @@ typedef struct D2DRenderNodeData
     IDWriteTextLayout*  pTextLayout;
 } D2DRenderNodeData;
 
-typedef struct D2DRenderNodeData *D2DRenderNode;
+typedef D2DRenderNodeData *D2DRenderNode;
 
 class FontResources;
 
 typedef struct D2DContextData
 {
     CRITICAL_SECTION    cs;
-    D2DRenderNode       pData;
-    D2DRenderNode       pData0;
-    D2DRenderNode       pDataDefault;
+    RenderRoot          pData;
+    RenderRoot          pData0;
+    RenderRoot          pDataDefault;
 
     ID2D1Factory*       pFactory;
     IDWriteFactory5*    pDWriteFactory;
@@ -142,7 +143,7 @@ extern LONG    g_threadCount;
 
 extern D2DContextData d2d;
 extern ThemeData tm;
-extern void ReleaseD2DResource(D2DRenderNode n);
+extern void ReleaseD2DResource(RenderRoot root);
 
 void render_svg_logo(const char*);
 unsigned WINAPI open_mspfile_thread(LPVOID lpData);

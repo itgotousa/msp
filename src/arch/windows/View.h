@@ -84,7 +84,6 @@ public:
 		ZeroMemory(&m_Am, sizeof(AnimationData));
 		m_timerStart = FALSE;
 		InitDefaults();
-		InitViewDefaults();
 	}
 
 	~CView()
@@ -157,7 +156,7 @@ private:
 	// Current view
 	float m_scaleX;          // horizontal scaling
 	float m_scaleY;          // vertical scaling
-	float m_angle;           // in degrees
+	//float m_angle;           // in degrees
 	float m_originX;         // focused point in document (moves on panning and caret navigation)
 	float m_originY;
 	float m_contentWidth;    // page size - margin left - margin right (can be fixed or variable)
@@ -173,13 +172,10 @@ private:
 		m_currentlyPanning = false;
 		m_previousMouseX = 0;
 		m_previousMouseY = 0;
-	}
 
-	void InitViewDefaults()
-	{
 		m_scaleX = 1;
 		m_scaleY = 1;
-		m_angle = 0;
+		//m_angle = 0;
 		m_originX = 0;
 		m_originY = 0;
 	}
@@ -211,14 +207,14 @@ public:
 
 	void DrawDefault()
 	{
-		D2DRenderNode n = d2d.pDataDefault;
+		if (NULL == d2d.pDataDefault) return;
+			
+		D2DRenderNode n = (D2DRenderNode)d2d.pDataDefault->node;
+		if (NULL == n) return;
+
 		HRESULT hr = S_OK;
 		ID2D1Bitmap* bmp = NULL;
 
-		if (NULL == n) return;
-		//if (NULL == n->pConverter) return;
-
-		int x, y, width, height;
 		SIZE sz;
 		RECT rc;
 		GetClientRect(&rc);
@@ -226,12 +222,11 @@ public:
 		if (sz.cx > rc.right)  rc.right = sz.cx;
 		if (sz.cy > rc.bottom) rc.bottom = sz.cy;
 
-		width = n->std.width; height = n->std.height;
-		x = ((rc.right - rc.left - width) >> 1);
-		y = ((rc.bottom - rc.top - height) >> 1);
-
-		if (x < 0) x = 0;
-		if (y < 0) y = 0;
+		U32 width = n->std.width; 
+		U32 height = n->std.height;
+		int x = ((rc.right - rc.left - width) >> 1);
+		int y = ((rc.bottom - rc.top - height) >> 1);
+		if (x < 0) x = 0;  if (y < 0) y = 0;
 
 		hr = m_pRenderTarget->CreateBitmap(
 			D2D1::SizeU(width, height), n->std.image, width * 4,
@@ -241,9 +236,8 @@ public:
 		if(SUCCEEDED(hr))
 		{
 			m_pRenderTarget->BeginDraw();
-
-			m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-			m_pRenderTarget->Clear( D2D1::ColorF(D2D1::ColorF::White) );
+			//m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+			m_pRenderTarget->Clear(D2D1::ColorF(tm.bkg_color));
 
 			POINT pt;
 			GetScrollOffset(pt);
@@ -336,23 +330,62 @@ public:
 	}
 
 
-	void DrawMSPGraphic(D2DRenderNode n)
+	void DrawMSPGraphic(D2DRenderNode n, U32 heigth)
 	{
 #if 0
-		HRESULT hr = S_OK;
-
-		if (NULL == n->pGeometry) return;
-
-		ID2D1SolidColorBrush* brush = NULL;
-
-		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &brush);
-		if (FAILED(hr)) return;
-
 		m_pRenderTarget->DrawGeometry(n->pGeometry, brush, 1, n->pStrokeStyle);
-
-		brush->Release();
-		brush = NULL;
 #endif
+	}
+
+	void DrawMSPImage(D2DRenderNode n, U32 height)
+	{
+		HRESULT hr = S_OK;
+		ID2D1Bitmap* bmp = NULL;
+
+		POINT pt;
+		GetScrollOffset(pt);
+
+		D2D1_RECT_F srcRect = D2D1::RectF(
+			static_cast<float>(-pt.x),
+			static_cast<float>(-pt.y + height) ,
+			static_cast<float>(n->std.width - pt.x),
+			static_cast<float>(n->std.height - pt.y + height));
+
+		if (0 && n->am.frameCount > 1)
+		{
+#if 0
+			// Get the bitmap to draw on the hwnd render target
+			//hr = m_pFrameComposeRT->GetBitmap(&bmp);
+			IWICBitmapFrameDecode* pf;
+			IWICFormatConverter* pc;
+			hr = n->pDecoder->GetFrame(m_Am.frameIndex, &(pf));
+			m_Am.frameIndex++;
+			if (m_Am.frameIndex >= m_Am.frameCount) m_Am.frameIndex = 0;
+			hr = d2d.pIWICFactory->CreateFormatConverter(&(pc));
+			pc->Initialize(pf, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.0, WICBitmapPaletteTypeMedianCut);
+			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(pc, NULL, &bmp);
+			SAFERELEASE(pf);
+			SAFERELEASE(pc);
+#endif
+		}
+		else
+		{
+			//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
+			hr = m_pRenderTarget->CreateBitmap(
+				D2D1::SizeU(n->std.width, n->std.height), n->std.image, n->std.width * 4,
+				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
+				&bmp
+			);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			// Draw the bitmap onto the calculated rectangle
+			//m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+			m_pRenderTarget->DrawBitmap(bmp, &srcRect);
+		}
+
+		SAFERELEASE(bmp);
 	}
 
 
@@ -360,20 +393,18 @@ public:
 	{
 		// Returns a valid range of the current selection,
 		// regardless of whether the caret or anchor is first.
-#if 0
 		UINT32 caretBegin = m_caretAnchor;
 		UINT32 caretEnd = m_caretPosition + m_caretPositionOffset;
 		if (caretBegin > caretEnd)
 			std::swap(caretBegin, caretEnd);
 
 		// Limit to actual text length.
-		UINT32 textLength = n->std.length;
+		UINT32 textLength = (n->std.text_length)>>1;
 		caretBegin = std::min(caretBegin, textLength);
 		caretEnd = std::min(caretEnd, textLength);
 
 		DWRITE_TEXT_RANGE textRange = { caretBegin, caretEnd - caretBegin };
-#endif
-		DWRITE_TEXT_RANGE textRange = { 0, 0 };
+
 		return textRange;
 	}
 
@@ -427,9 +458,12 @@ public:
 		rect.bottom = caretY + caretMetrics.height;
 	}
 
-	void DrawMSPText(D2DRenderNode n, D2D1_RECT_F *pageRect)
+	void DrawMSPText(D2DRenderNode n, U32 height, D2D1_RECT_F *pageRect)
 	{
 		HRESULT hr = S_OK;
+
+		POINT pt;
+		GetScrollOffset(pt);
 
 		// Calculate actual location in render target based on the
 		// current page transform.
@@ -456,13 +490,14 @@ public:
 #endif 
 		// Draw the page
 		ID2D1SolidColorBrush* brush = NULL;
+#if 0
 		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(tm.text_bkgcolor), &brush);
 		if (SUCCEEDED(hr))
 		{
 			m_pRenderTarget->FillRectangle(*pageRect, brush);
 			SAFERELEASE(brush);
 		}
-
+#endif
 		DWRITE_TEXT_RANGE caretRange = GetSelectionRange(n);
 		UINT32 actualHitTestCount = 0;
 
@@ -504,17 +539,17 @@ public:
 			// it is disabled (better for performance anyway).
 			m_pRenderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
 
-			hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::LightSkyBlue), &brush);
+			hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(tm.text_selectcolor), &brush);
 			if (SUCCEEDED(hr))
 			{
 				for (size_t i = 0; i < actualHitTestCount; ++i)
 				{
 					const DWRITE_HIT_TEST_METRICS& htm = hitTestMetrics[i];
 					D2D1_RECT_F highlightRect = {
-						htm.left,
-						htm.top,
-						(htm.left + htm.width),
-						(htm.top + htm.height)
+						htm.left - pt.x,
+						htm.top - pt.y + height,
+						(htm.left + htm.width) - pt.x,
+						(htm.top + htm.height) - pt.y + height
 					};
 
 					m_pRenderTarget->FillRectangle(highlightRect, brush);
@@ -531,15 +566,13 @@ public:
 		hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(tm.text_color), &brush);
 		if (SUCCEEDED(hr))
 		{
-			//m_pRenderTarget->FillRectangle(caretRect, brush);
-
+			caretRect.left -= pt.x;  caretRect.right -= pt.x;
+			caretRect.top -= pt.y + height;   caretRect.bottom -= pt.y + height;
+			m_pRenderTarget->FillRectangle(caretRect, brush);
 			m_pRenderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 
 			// Draw text
-			POINT pt;
-			GetScrollOffset(pt);
-
-			D2D1_POINT_2F  origin = { pageRect->left - pt.x, pageRect->top - pt.y };
+			D2D1_POINT_2F  origin = { pageRect->left - pt.x, pageRect->top - pt.y + height };
 			m_pRenderTarget->DrawTextLayout(origin, n->pTextLayout, brush);
 
 			SAFERELEASE(brush);
@@ -549,13 +582,14 @@ public:
 		// Draw the selection ranges in front of images.
 		// This shades otherwise opaque images so they are visibly selected,
 		// checking the isText field of the hit-test metrics.
+#if 0
 		if (actualHitTestCount > 0)
 		{
 			// Note that an ideal layout will return fractional values,
 			// so you may see slivers between the selection ranges due
 			// to the per-primitive antialiasing of the edges unless
 			// it is disabled (better for performance anyway).
-#if 0
+
 			target.SetAntialiasing(false);
 
 			for (size_t i = 0; i < actualHitTestCount; ++i)
@@ -575,64 +609,8 @@ public:
 			}
 
 			target.SetAntialiasing(true);
+		}
 #endif
-		}
-
-		// Restore transform
-		//m_pRenderTarget->SetTransform(previousTransform);
-	}
-
-	void DrawMSPImage(D2DRenderNode n)
-	{
-		HRESULT hr = S_OK;
-		ID2D1Bitmap* bmp = NULL;
-
-		//if (NULL == n->pConverter) return;
-
-		POINT pt;
-		GetScrollOffset(pt);
-
-		D2D1_RECT_F srcRect = D2D1::RectF(
-			static_cast<float>(-pt.x),
-			static_cast<float>(-pt.y),
-			static_cast<float>(n->std.width - pt.x),
-			static_cast<float>(n->std.height - pt.y));
-
-		if (0 && n->am.frameCount > 1)
-		{
-#if 0
-			// Get the bitmap to draw on the hwnd render target
-			//hr = m_pFrameComposeRT->GetBitmap(&bmp);
-			IWICBitmapFrameDecode* pf;
-			IWICFormatConverter* pc;
-			hr = n->pDecoder->GetFrame(m_Am.frameIndex, &(pf));
-			m_Am.frameIndex++;
-			if (m_Am.frameIndex >= m_Am.frameCount) m_Am.frameIndex = 0;
-			hr = d2d.pIWICFactory->CreateFormatConverter(&(pc));
-			pc->Initialize(pf, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.0, WICBitmapPaletteTypeMedianCut);
-			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(pc, NULL, &bmp);
-			SAFERELEASE(pf);
-			SAFERELEASE(pc);
-#endif
-		}
-		else
-		{
-			//hr = m_pRenderTarget->CreateBitmapFromWicBitmap(n->pConverter, NULL, &bmp);
-			hr = m_pRenderTarget->CreateBitmap(
-				D2D1::SizeU(n->std.width, n->std.height), n->std.image, n->std.width * 4,
-				D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_R8G8B8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)),
-				&bmp
-			);
-		}
-
-		if (SUCCEEDED(hr))
-		{
-			// Draw the bitmap onto the calculated rectangle
-			m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
-			m_pRenderTarget->DrawBitmap(bmp, &srcRect);
-		}
-
-		SAFERELEASE(bmp);
 	}
 
 	void DoPaint(CDCHandle dc)
@@ -649,6 +627,13 @@ public:
 			return;
 		}
 
+		D2DRenderNode node = (D2DRenderNode)d2d.pData->node;
+		if (NULL == node)
+		{
+			DrawDefault();
+			return;
+		}
+
 		RECT rc;
 		GetClientRect(&rc);
 		SIZE sz;
@@ -660,13 +645,12 @@ public:
 		GetViewMatrix(reinterpret_cast<DWRITE_MATRIX*>(&pageTransform));
 
 		D2D1_POINT_2F pageSize = GetPageSize();
+		fprintf(stdout, "GetPageSize x=%f | y=%f\n", pageSize.x, pageSize.y);
 		D2D1_RECT_F pageRect = { 0, 0, pageSize.x, pageSize.y };
 		float dx = ((float)rc.right - pageSize.x) / 2;
 		if (dx < 0) dx = 0;
 		pageTransform.dx = dx;
 
-		D2DRenderNode	n = d2d.pData;
-		
 		m_pRenderTarget->BeginDraw();
 		/////////////////////////////////////////////////////////////
 		//m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
@@ -678,23 +662,26 @@ public:
 		m_pRenderTarget->SetTransform(&pageTransform);
 
 		m_pRenderTarget->Clear(D2D1::ColorF(tm.bkg_color));
-		while(NULL != n)
+		
+		U32 hoff = 0;
+		while(NULL != node)
 		{
-			switch(n->std.type)
+			switch(node->std.type)
 			{
-				case MSP_TYPE_GRAPHIC	:	
-						DrawMSPGraphic(n);
-						break;
 				case MSP_TYPE_TEXT		:	
-						DrawMSPText(n, &pageRect);
+						DrawMSPText(node, hoff, &pageRect);
 						break;
 				case MSP_TYPE_IMAGE		:
-						DrawMSPImage(n);
+						DrawMSPImage(node, hoff);
 						break;
-				default					:	
+				case MSP_TYPE_GRAPHIC:
+						//DrawMSPGraphic(node, height);
+						break;
+				default					:
 						break;
 			}
-			n = (D2DRenderNode)n->std.next;
+			hoff += (node->std.height);
+			node = (D2DRenderNode)node->std.next;
 		}
 
 		// Restore transform
@@ -797,8 +784,8 @@ public:
 		}
 		return 0;
 	}
-#if 0
-	void AlignCaretToNearestCluster(BOOL isTrailingHit, BOOL skipZeroWidth)
+
+	void AlignCaretToNearestCluster(bool isTrailingHit, bool skipZeroWidth)
 	{
 		// Uses hit-testing to align the current caret position to a whole cluster,
 		// rather than residing in the middle of a base character + diacritic,
@@ -807,7 +794,8 @@ public:
 		float caretX, caretY;
 
 		// Align the caret to the nearest whole cluster.
-		IDWriteTextLayout* tlt = (d2d.pData)->pTextLayout;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		IDWriteTextLayout* tlt = n->pTextLayout;
 		if (NULL != tlt)
 		{
 			tlt->HitTestTextPosition(
@@ -841,7 +829,8 @@ public:
 		// Retrieves the line metrics, used for caret navigation, up/down and home/end.
 		DWRITE_TEXT_METRICS textMetrics;
 
-		IDWriteTextLayout* tlt = (d2d.pData)->pTextLayout;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		IDWriteTextLayout* tlt = n->pTextLayout;
 
 		tlt->GetMetrics(&textMetrics);
 
@@ -913,7 +902,7 @@ public:
 		// Don't actually call ShowCaret. It's enough to just set its position.
 	}
 
-	BOOL SetSelection(SetSelectionMode moveMode, UINT32 advance, BOOL extendSelection, BOOL updateCaretFormat)
+	bool SetSelection(SetSelectionMode moveMode, UINT32 advance, bool extendSelection, bool updateCaretFormat = true)
 	{
 		// Moves the caret relatively or absolutely, optionally extending the
 		// selection range (for example, when shift is held).
@@ -921,8 +910,9 @@ public:
 		UINT32 absolutePosition = m_caretPosition + m_caretPositionOffset;
 		UINT32 oldAbsolutePosition = absolutePosition;
 		UINT32 oldCaretAnchor = m_caretAnchor;
-
-		IDWriteTextLayout* tlt = (d2d.pData)->pTextLayout;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		IDWriteTextLayout* tlt = n->pTextLayout;
+		wchar_t* text_ = (wchar_t*)n->std.text;
 
 		switch (moveMode)
 		{
@@ -934,35 +924,31 @@ public:
 				AlignCaretToNearestCluster(FALSE, TRUE);
 
 				// special check for CR/LF pair
-#if 0
 				absolutePosition = m_caretPosition + m_caretPositionOffset;
 				if (absolutePosition >= 1
-					&& absolutePosition < text_.size()
+					&& absolutePosition < ((n->std.text_length) >> 1)
 					&& text_[absolutePosition - 1] == '\r'
 					&& text_[absolutePosition] == '\n')
 				{
 					m_caretPosition = absolutePosition - 1;
 					AlignCaretToNearestCluster(FALSE, TRUE);
 				}
-#endif
 			}
 			break;
 
 		case SetSelectionModeRight:
 			m_caretPosition = absolutePosition;
 			AlignCaretToNearestCluster(TRUE, TRUE);
-#if 0
 			// special check for CR/LF pair
-			absolutePosition = caretPosition_ + caretPositionOffset_;
+			absolutePosition = m_caretPosition + m_caretPositionOffset;
 			if (absolutePosition >= 1
-				&& absolutePosition < text_.size()
+				&& absolutePosition < (n->std.text_length >> 1)
 				&& text_[absolutePosition - 1] == '\r'
 				&& text_[absolutePosition] == '\n')
 			{
-				caretPosition_ = absolutePosition + 1;
+				m_caretPosition = absolutePosition + 1;
 				AlignCaretToNearestCluster(false, true);
 			}
-#endif
 			break;
 
 		case SetSelectionModeLeftChar:
@@ -1196,7 +1182,7 @@ public:
 			InvalidateRect(NULL, FALSE);
 
 			D2D1_RECT_F rect;
-			GetCaretRect(d2d.pData, rect);
+			GetCaretRect(n, rect);
 			UpdateSystemCaret(rect);
 		}
 
@@ -1206,10 +1192,9 @@ public:
 	void CopyToClipboard()
 	{
 		// Copies selected text to clipboard.
-		DWRITE_TEXT_RANGE selectionRange = GetSelectionRange(d2d.pData);
-		if (selectionRange.length <= 0)
-			return;
-
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		 DWRITE_TEXT_RANGE selectionRange = GetSelectionRange(n);
+		if (selectionRange.length <= 0) return;
 		// Open and empty existing contents.
 		if (OpenClipboard())
 		{
@@ -1218,18 +1203,15 @@ public:
 				// Allocate room for the text
 				size_t byteSize = sizeof(wchar_t) * (selectionRange.length + 1);
 				HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, byteSize);
-
 				if (hClipboardData != NULL)
 				{
 					void* memory = GlobalLock(hClipboardData);  // [byteSize] in bytes
-
 					if (memory != NULL)
 					{
 						// Copy text to memory block.
-						const wchar_t* text = (wchar_t*)(d2d.pData)->std.data;
+						const wchar_t* text = (wchar_t*)(n->std.text);
 						memcpy(memory, &text[selectionRange.startPosition], byteSize);
 						GlobalUnlock(hClipboardData);
-
 						if (SetClipboardData(CF_UNICODETEXT, hClipboardData) != NULL)
 						{
 							hClipboardData = NULL; // system now owns the clipboard, so don't touch it.
@@ -1241,16 +1223,16 @@ public:
 			CloseClipboard();
 		}
 	}
-#endif
+
 	LRESULT OnKeyPress(UINT uMsg, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 	{
-#if 0
+		if (NULL == d2d.pData) return 0;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		if (NULL == n) return 0;
+
 		UINT32 keyCode = wParam;
 		// Handles caret navigation and special presses that
 		// do not generate characters.
-
-		if (NULL == d2d.pData) return 0;
-
 		bool heldShift = (GetKeyState(VK_SHIFT) & 0x80) != 0;
 		bool heldControl = (GetKeyState(VK_CONTROL) & 0x80) != 0;
 
@@ -1258,6 +1240,8 @@ public:
 
 		switch (keyCode)
 		{
+		//case VK_SHIFT:
+		//case VK_CONTROL:
 		case VK_TAB:
 			break; // want tabs
 
@@ -1285,7 +1269,7 @@ public:
 			SetSelection(heldControl ? SetSelectionModeLast : SetSelectionModeEnd, 0, heldShift, TRUE);
 			break;
 
-		case 'C':
+		case 'B':
 			if (heldControl)
 				CopyToClipboard();
 			break;
@@ -1294,20 +1278,27 @@ public:
 			if (heldControl)
 				SetSelection(SetSelectionModeAll, 0, TRUE, TRUE);
 			break;
+		default:
+			break;
 		}
-#endif
 		return 0;
 	}
-#if 0
+
+
 	void MirrorXCoordinate(IN OUT float& x)
 	{
 		// On RTL builds, coordinates may need to be restored to or converted
 		// from Cartesian coordinates, where x increases positively to the right.
 		if (GetWindowLong(GWL_EXSTYLE) & WS_EX_LAYOUTRTL)
 		{
-			RECT rect;
-			GetClientRect(&rect);
-			x = float(rect.right) - x - 1;
+			SIZE sz;
+			RECT rc;
+			GetClientRect(&rc);
+			GetScrollSize(sz);
+			if (sz.cx > rc.right)  rc.right = sz.cx;
+			if (sz.cy > rc.bottom) rc.bottom = sz.cy;
+
+			x = float(rc.right) - x - 1;
 		}
 	}
 
@@ -1327,7 +1318,8 @@ public:
 		float transformedX = (x * matrix.m11 + y * matrix.m21 + matrix.dx);
 		float transformedY = (x * matrix.m12 + y * matrix.m22 + matrix.dy);
 
-		IDWriteTextLayout* tlt = (d2d.pData)->pTextLayout;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		IDWriteTextLayout* tlt = n->pTextLayout;
 
 		HRESULT hr = tlt->HitTestPoint(transformedX, transformedY, &isTrailingHit,&isInside, &caretMetrics);
 
@@ -1340,13 +1332,14 @@ public:
 
 		return true;
 	}
-#endif
+
 	LRESULT OnMouseRelease(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
-#if 0
 		ReleaseCapture();
 
 		if (NULL == d2d.pData) return 0;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		if (NULL == n) return 0;
 
 		float x = float(GET_X_LPARAM(lParam));
 		float y = float(GET_Y_LPARAM(lParam));
@@ -1361,17 +1354,19 @@ public:
 		{
 			m_currentlyPanning = FALSE;
 		}
-#endif
 		return 0;
 	}
 
 	void UpdateScrollInfo()
 	{
-#if 0
 		// Updates scroll bars.
 		// Determine scroll bar's step size in pixels by multiplying client rect by current view.
 		RECT clientRect;
 		GetClientRect(&clientRect);
+		SIZE sz;
+		GetScrollSize(sz);
+		if (sz.cx > clientRect.right)  clientRect.right = sz.cx;
+		if (sz.cy > clientRect.bottom) clientRect.bottom = sz.cy;
 
 		D2D1::Matrix3x2F pageTransform;
 		GetInverseViewMatrix((DWRITE_MATRIX*)&pageTransform);
@@ -1388,7 +1383,7 @@ public:
 		SCROLLINFO scrollInfo = { sizeof(scrollInfo) };
 		scrollInfo.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
 
-		if (IsLandscapeAngle(m_angle))
+		if (IsLandscapeAngle(0))
 		{
 			std::swap(x, y);
 			std::swap(pageSize.x, pageSize.y);
@@ -1411,10 +1406,9 @@ public:
 		scrollInfo.nMin = 0;
 		scrollInfo.nMax = int(pageSize.x) + scrollInfo.nPage;
 		SetScrollInfo(SB_HORZ, &scrollInfo, TRUE);
-#endif
+
 	}
 
-#if 0
 	void ConstrainViewOrigin()
 	{
 		// Keep the page on-screen by not allowing the origin
@@ -1427,11 +1421,13 @@ public:
 		if (m_originY > pageSize.y) m_originY = pageSize.y;
 		if (m_originY < 0) m_originY = 0;
 	}
-#endif
+
 	LRESULT OnMouseMove(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
-#if 0
 		if (NULL == d2d.pData) return 0;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		if (NULL == n) return 0;
+
 		// Selects text or pans.
 		float x = float(GET_X_LPARAM(lParam));
 		float y = float(GET_Y_LPARAM(lParam));
@@ -1460,27 +1456,27 @@ public:
 			UpdateScrollInfo();
 			InvalidateRect(NULL, FALSE); 
 		}
-#endif
 		return 0;
 	}
 
 	LRESULT OnMousePress(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
-
 		if (WM_LBUTTONDOWN == uMsg)
 		{
 			::PostMessage(GetTopLevelParent(), WM_NCLBUTTONDOWN, HTCAPTION, lParam);
 		}
-#if 0
-		float x, y;
+
 		if (NULL == d2d.pData) return 0;
-		if (MSP_TYPE_IMAGE == d2d.pData->std.type) return 0;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		if (NULL == n) return 0;
+		if (MSP_TYPE_IMAGE == n->std.type) return 0;
 		
 		SetFocus();
 		SetCapture();
-
-		x = float(GET_X_LPARAM(lParam));
-		y = float(GET_Y_LPARAM(lParam));
+		POINT pt;
+		GetScrollOffset(pt);
+		float x = float(GET_X_LPARAM(lParam)) - pt.x;
+		float y = float(GET_Y_LPARAM(lParam)) - pt.y;
 
 		MirrorXCoordinate(x);
 
@@ -1497,10 +1493,8 @@ public:
 			m_previousMouseY = y;
 			m_currentlyPanning = true;
 		}
-#endif
 		return 0;
 	}
-
 
 	int OpenMSPFile(LPCTSTR lpszURL)
 	{
@@ -1532,7 +1526,6 @@ public:
 			-m_originX, -m_originY
 		};
 
-		// Scale and rotate
 #if 0
 		double radians = DegreesToRadians(fmod(m_angle, 360.0f));
 		double cosValue = cos(radians);
@@ -1544,12 +1537,19 @@ public:
 			cosValue = floor(cosValue + .5);
 			sinValue = floor(sinValue + .5);
 		}
-#endif
+
 		double cosValue = 1;
 		double sinValue = 0;
 		DWRITE_MATRIX rotationMatrix = {
 			float(cosValue * m_scaleX), float(sinValue * m_scaleX),
 			float(-sinValue * m_scaleY), float(cosValue * m_scaleY),
+			0, 0
+		};
+#endif
+		// Scale
+		DWRITE_MATRIX rotationMatrix = {
+			m_scaleX, 0,
+			0, m_scaleY,
 			0, 0
 		};
 
@@ -1586,11 +1586,11 @@ public:
 		// Use the layout metrics to determine how large the page is, taking
 		// the maximum of the content size and layout's maximal dimensions.
 		D2D1_POINT_2F pageSize = { 0, 0 };
-		D2DRenderNode	n = d2d.pData;
-		if (NULL != n)
+		RenderRoot root = d2d.pData;
+		if (NULL != root)
 		{
-			pageSize.x = n->std.width;
-			pageSize.y = n->std.height;
+			pageSize.x = root->width;
+			pageSize.y = root->height;
 #if 0
 			if (NULL != n->pTextLayout)
 			{
@@ -1606,27 +1606,12 @@ public:
 			}
 #endif
 		}
-
 		return pageSize;
 	}
 
-#if 0
-	void ConstrainViewOrigin()
-	{
-		// Keep the page on-screen by not allowing the origin
-		// to go outside the page bounds.
-		D2D1_POINT_2F pageSize = GetPageSize(textLayout_);
-
-		if (m_originX > pageSize.x) m_originX = pageSize.x;
-		if (m_originX < 0) m_originX = 0;
-
-		if (m_originY > pageSize.y) m_originY = pageSize.y;
-		if (m_originY < 0) m_originY = 0;
-	}
-#endif
 	void OnScroll(UINT message, UINT request)
 	{
-#if 0
+
 		SCROLLINFO scrollInfo = { sizeof(scrollInfo) };
 		scrollInfo.fMask = SIF_ALL;
 
@@ -1683,7 +1668,6 @@ public:
 			ConstrainViewOrigin();
 			InvalidateRect(NULL, FALSE);
 		}
-#endif
 	}
 
 	LRESULT OnVScroll(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
@@ -1726,12 +1710,11 @@ public:
 		return 0;
 	}
 
-#if 0
 	void UpdateCaretFormatting()
 	{
 		UINT32 currentPos = m_caretPosition + m_caretPositionOffset;
-
-		IDWriteTextLayout* textLayout = d2d.pData->pTextLayout;
+		D2DRenderNode n = (D2DRenderNode)d2d.pData->node;
+		IDWriteTextLayout* textLayout = n->pTextLayout;
 		if (currentPos > 0)
 		{
 			--currentPos; // Always adopt the trailing properties.
@@ -1767,10 +1750,71 @@ public:
 		SafeRelease(&drawingEffect);
 #endif
 	}
+
+	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+	{
+		if (UI_NOTIFY_FILEOPEN != wParam)
+		{
+			return 0;
+		}
+		
+		RenderRoot old;
+
+		EnterCriticalSection(&(d2d.cs));
+			old = d2d.pData;
+			d2d.pData = d2d.pData0;
+			d2d.pData0 = NULL;
+		LeaveCriticalSection(&(d2d.cs));
+		
+		ReleaseD2DResource(old);
+		
+		if (NULL == d2d.pData) return 0;
+		if (NULL == d2d.pData->node) return 0;
+
+		SetScrollSize(d2d.pData->width, d2d.pData->height);
+
+		switch(d2d.pData->type)
+		{
+		case MSP_TYPE_TEXT	:
+		case MSP_TYPE_IMAGE	:
+			InvalidateRect(NULL);
+			UpdateWindow();
+			//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
+
+#if 0
+		if (m_timerStart) {
+			KillTimer(ANIMATION_TIMER_ID);
+			m_timerStart = FALSE;
+		}
+		fileType ft = (fileType)lParam;
+		if (MSP_TYPE_IMAGE == n->std.type)
+		{
+			if (MSP_HINT_PNG & n->std.flag) ft = filePNG;
+			if (MSP_HINT_GIF & n->std.flag) ft = fileGIF;
+		}
+
+		case fileGIF:
+			//ZeroMemory(&m_Am, sizeof(AnimationData));
+			if (n->am.frameCount > 1) // it is animation GIF
+			{
+				m_Am = n->am;
+				//ComposeNextFrame();
+				//if (0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL))
+				//	m_timerStart = TRUE;
+			}
+		case filePNG:
+		case fileSVG:
 #endif
+
+#if 0
 	void InitMarkDownLayout()
 	{
-#if 0
 		D2DRenderNode	n;
 		float layoutWidth;
 		float layoutHeight;
@@ -1786,66 +1830,8 @@ public:
 			m_originY = layoutHeight / 2;
 		}
 		LeaveCriticalSection(&(d2d.cs));
+
+	}
 #endif
-	}
-
-	LRESULT OnUINotify(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
-	{
-		UINT32 w = 1, h = 1;
-
-		if (UI_NOTIFY_FILEOPEN != wParam)
-		{
-			return 0;
-		}
-
-		D2DRenderNode n = d2d.pData;
-		EnterCriticalSection(&(d2d.cs));
-			d2d.pData = d2d.pData0;
-			d2d.pData0 = NULL;
-		LeaveCriticalSection(&(d2d.cs));
-
-		ReleaseD2DResource(n);
-		if (NULL == d2d.pData) return 0;
-
-		SetScrollSize((d2d.pData)->std.width, (d2d.pData)->std.height);
-
-		n = d2d.pData;
-
-		if(m_timerStart) {
-			KillTimer(ANIMATION_TIMER_ID);
-			m_timerStart = FALSE;
-		}
-
-		fileType ft = (fileType)lParam;
-		if (MSP_TYPE_IMAGE == n->std.type)
-		{
-			if (MSP_HINT_PNG & n->std.flag) ft = filePNG;
-			if (MSP_HINT_GIF & n->std.flag) ft = fileGIF;
-		}
-
-		switch(ft)
-		{
-		case fileMD:
-			//InitMarkDownLayout();
-		case fileGIF	:
-			//ZeroMemory(&m_Am, sizeof(AnimationData));
-			if (n->am.frameCount > 1) // it is animation GIF
-			{
-				m_Am = n->am;
-				//ComposeNextFrame();
-				//if (0 != SetTimer(ANIMATION_TIMER_ID, m_Am.frameDelay, NULL))
-				//	m_timerStart = TRUE;
-			}
-		case filePNG	:
-		case fileSVG	:
-			InvalidateRect(NULL);
-			UpdateWindow();
-			break;
-		default:
-			//::PostMessage(GetTopLevelParent(), WM_UI_NOTIFY, 0, 0);
-			return 0;
-		}
-		return 0;
-	}
 
 };

@@ -107,10 +107,10 @@ public:
 
 		m_hWndClient = m_view.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, WS_EX_CLIENTEDGE);
 		// replace with appropriate values for the app
-		D2DRenderNode n = d2d.pDataDefault;
-		if(NULL != n)
+		RenderRoot root = d2d.pDataDefault;
+		if (NULL != root)
 		{
-			m_view.SetScrollSize(tm.width, n->std.height);
+				m_view.SetScrollSize(root->width, root->height);
 		}
 		else 
 		{
