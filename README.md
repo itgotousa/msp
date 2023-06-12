@@ -27,7 +27,7 @@ Only on Windows Platform
 2. Install [CMake](https://cmake.org/download). I am using 3.26.3 version. Any version newer than this should be good.
 3. Download MSP zip file or run: "git clone https://github.com/itgotousa/msp.git" command to extract the last version code.
 4. I assume your MSP code is in: D:\github\msp
-5. Open "Visual Studio 2022的X64 Native Tools Command Prompt for VS 2022" command line window. You can easily find it in the main menu of Windows 10 after your Visual Studio 2022 software installaltion is done.
+5. Open "X64 Native Tools Command Prompt for VS 2022" command line window. You can easily find it in the main menu of Windows 10 after your Visual Studio 2022 software installaltion is done.
 6. In the command line window of step 5, mkdir a new dir, such as c:\temp\build, then cd to c:\temp\build.
 7. Still in the same command line window, in C:\temp\build directory, run "cmake -G "NMake Makefiles" D:\github\msp\src"
 8. In the same command line window, run "nmake"
